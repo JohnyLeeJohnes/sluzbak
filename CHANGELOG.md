@@ -3,7 +3,7 @@
 Všechny podstatné změny v projektu. Formát vychází z [Keep a Changelog](https://keepachangelog.com/cs/1.1.0/),
 verze se řídí [sémantickým verzováním](https://semver.org/lang/cs/).
 
-## [Nevydáno]
+## [0.2.0] - 2026-10-05
 
 Poprvé vyzkoušeno se skutečným klíčem; z toho většina změn níž.
 
@@ -87,4 +87,5 @@ První vydání. Číslo začíná nulou, protože aplikace ještě neběžela s
 - Aplikace zatím neběžela proti skutečným datům z Golemia, jen proti ukázkovým odpovědím sestaveným podle
   specifikace API.
 
+[0.2.0]: https://github.com/JohnyLeeJohnes/GolemWatch/releases/tag/v0.2.0
 [0.1.0]: https://github.com/JohnyLeeJohnes/GolemWatch/releases/tag/v0.1.0
