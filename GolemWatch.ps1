@@ -8,11 +8,17 @@
 param([switch]$Install, [switch]$Demo, [string]$SettingsPath, [string]$Screenshot)
 
 $ErrorActionPreference = 'Stop'
+# Číslo vydání. Musí sedět s nejnovější verzí v CHANGELOG.md (hlídá tests/unit.ps1), bere si ho tools/make-release.ps1.
+$version = '0.1.0'
 $icon = Join-Path $PSScriptRoot 'assets\golemwatch.ico'
 $library = Join-Path $PSScriptRoot 'Golemio.ps1'
 $demoDirectory = Join-Path $PSScriptRoot 'demo'
 
 if ($Install) {
+    # Soubory rozbalené ze ZIPu staženého prohlížečem nesou značku "z internetu" a Windows se u nich
+    # může ptát nebo je odmítnout. Po instalaci už značku nemají. (Kde to nejde, zůstane vše při starém.)
+    Get-ChildItem -LiteralPath $PSScriptRoot -Recurse -File | Unblock-File -ErrorAction SilentlyContinue
+
     $shell = New-Object -ComObject WScript.Shell
     # Nabídka Start, plocha a složka s aplikací (ať je i tam na co kliknout).
     foreach ($directory in [Environment]::GetFolderPath('Programs'), [Environment]::GetFolderPath('DesktopDirectory'), $PSScriptRoot) {
@@ -468,7 +474,7 @@ try {
 
     $ui = @{}
     'SetupView', 'TokenBox', 'KeyLink', 'AddressBox', 'FindButton', 'ResultsList', 'LatitudeBox', 'LongitudeBox',
-    'LimitsHint', 'SaveButton', 'SetupStatus', 'BackButton', 'DemoButton',
+    'LimitsHint', 'SaveButton', 'SetupStatus', 'BackButton', 'DemoButton', 'VersionText',
     'DashboardView', 'PlaceText', 'CoordinatesText', 'DemoBadge', 'UpdatedText', 'RefreshButton', 'SettingsButton',
     'DashboardScroll', 'Cards', 'Column1', 'Column2', 'Column3' | ForEach-Object { $ui[$_] = $window.FindName($_) }
     foreach ($name in $sections) {
@@ -592,6 +598,8 @@ try {
             if ('Transit' -in @(Get-Sections)) { Start-Section 'Transit' }
         }
     })
+
+    $ui.VersionText.Text = "GolemWatch $version"
 
     $state.Saved = Read-Settings
     if ($state.Saved) { Show-Dashboard -Reload }

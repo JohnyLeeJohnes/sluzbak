@@ -46,22 +46,26 @@ Odjezdy se obnovují každých 30 sekund (jde změnit), všechno ostatní každ�
 
 ## Instalace
 
-```
-git clone https://github.com/JohnyLeeJohnes/GolemWatch.git
-```
+1. Na stránce [Releases](https://github.com/JohnyLeeJohnes/GolemWatch/releases/latest) stáhni
+   `GolemWatch-<verze>.zip`.
+2. Klikni na stažený ZIP pravým tlačítkem, zvol **Vlastnosti**, dole zaškrtni **Odblokovat** a potvrď.
+3. Rozbal ho tam, kde má aplikace zůstat, třeba do Dokumentů.
+4. Ve složce `GolemWatch` poklepej na **`install.cmd`**. Vytvoří zástupce **GolemWatch** s ikonou v nabídce
+   Start, na ploše a přímo ve složce. Přes něj se aplikace spouští jako každá jiná, bez okna konzole.
 
-Ve složce `GolemWatch` pak poklepej na **`install.cmd`**. Vytvoří zástupce **GolemWatch** s ikonou v nabídce
-Start, na ploše a přímo ve složce. Přes něj se aplikace spouští jako každá jiná, bez okna konzole.
+> **Proč odblokovat?** Windows si soubory stažené z internetu označí a u skriptů s tímhle označením se ptá,
+> jestli je má spustit, nebo je rovnou odmítne (Smart App Control ve Windows 11). Když ZIP odblokuješ ještě
+> před rozbalením, označení se na rozbalené soubory nepřenese.
 
 - **Jen vyzkoušet:** poklepej na `GolemWatch.cmd`, spustí aplikaci bez vytváření zástupců.
+- **Nová verze:** stáhni ji stejně a rozbal přes tu starou. Nastavení zůstane, je uložené jinde. Kterou
+  verzi máš, je napsané dole na obrazovce nastavení.
 - **Přesunutí složky:** zástupce ukazuje tam, kde aplikace leží. Po přesunutí spusť `install.cmd` znovu.
 - **Odebrání:** smaž zástupce z plochy a z nabídky Start, celou složku a `%APPDATA%\GolemWatch`.
+- **Z gitu:** `git clone https://github.com/JohnyLeeJohnes/GolemWatch.git` a pak rovnou krok 4. Klonování
+  označení z internetu nepřidává, takže odblokování odpadá.
 
 Potřebuješ Windows 10 nebo 11 (Windows PowerShell 5.1 je jejich součástí). Vyzkoušeno na Windows 11.
-
-> **Stahuješ ZIP místo `git clone`?** Windows si soubory stažené z internetu označí a skripty s tímhle
-> označením nemusí spustit. Před rozbalením proto klikni na ZIP pravým tlačítkem a zvol
-> **Vlastnosti → Odblokovat**. Klonování přes git tohle označení nepřidává.
 
 ## První spuštění
 
@@ -109,6 +113,7 @@ v přehledu.
 | `demo/` | Ukázkové odpovědi API pro náměstí Míru. |
 | `GolemWatch.cmd`, `install.cmd` | Spuštění bez instalace a vytvoření zástupců. |
 | `tools/make-icon.ps1` | Vygeneruje ikonu do `assets/`. |
+| `tools/make-release.ps1` | Sestaví ZIP pro stránku Releases do `dist/`. |
 | `tests/unit.ps1` | Testy čtení dat nad ukázkovými odpověďmi. |
 | `tests/e2e.ps1` | Test, který aplikaci prokliká přes UI Automation. |
 | `tests/live.ps1` | Zkouška naživo: načte všechny karty ze skutečného API a vypíše, co která dostala. |

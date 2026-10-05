@@ -265,6 +265,12 @@ try {
     Remove-Item $quirks -Recurse -Force
 }
 
+'--- verze'
+$inApp = if ([IO.File]::ReadAllText((Join-Path $root 'GolemWatch.ps1')) -match "\`$version = '([\d.]+)'") { $Matches[1] }
+$inLog = if ([IO.File]::ReadAllText((Join-Path $root 'CHANGELOG.md')) -match '(?m)^## \[(\d+\.\d+\.\d+)\]') { $Matches[1] }
+CheckMatch 'aplikace zná svou verzi' $inApp '^\d+\.\d+\.\d+$'
+Check 'verze v aplikaci je nejnovější verze v CHANGELOGu' $inApp $inLog
+
 '--- kódování souborů'
 # Windows PowerShell čte skript bez BOM jako ANSI a rozbije češtinu.
 foreach ($file in Get-ChildItem $root -Recurse -Filter *.ps1) {

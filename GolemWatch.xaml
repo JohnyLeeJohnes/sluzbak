@@ -542,6 +542,8 @@
                     <Button x:Name="DemoButton" Style="{StaticResource QuietButton}" Margin="4,0" Content="Zkusit s ukázkovými daty"
                             ToolTip="Ukáže přehled pro náměstí Míru s vymyšlenými daty. Nic se neuloží a nikam se nepřipojuje."/>
                 </StackPanel>
+                <!-- Podle čísla verze člověk pozná, jestli má na GitHubu novější vydání. -->
+                <TextBlock x:Name="VersionText" Style="{StaticResource Small}" HorizontalAlignment="Center" Margin="0,16,0,0" Opacity="0.7"/>
             </StackPanel>
         </ScrollViewer>
 

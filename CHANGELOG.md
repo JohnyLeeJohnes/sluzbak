@@ -3,7 +3,9 @@
 Všechny podstatné změny v projektu. Formát vychází z [Keep a Changelog](https://keepachangelog.com/cs/1.1.0/),
 verze se řídí [sémantickým verzováním](https://semver.org/lang/cs/).
 
-## [Nevydáno]
+## [0.1.0] - 2026-10-05
+
+První vydání. Číslo začíná nulou, protože aplikace ještě neběžela se skutečným klíčem (viz Známé problémy).
 
 ### Přidáno
 
@@ -31,13 +33,14 @@ verze se řídí [sémantickým verzováním](https://semver.org/lang/cs/).
   a ve složce s aplikací.
 - Testy čtení dat (`tests/unit.ps1`), test, který aplikaci prokliká přes UI Automation (`tests/e2e.ps1`),
   a zkouška naživo se skutečným klíčem (`tests/live.ps1`).
-
-### Změněno
-
-- Aplikace je skript v PowerShellu s oknem ve WPF místo původního projektu v C#. Nic se nekompiluje ani
-  neinstaluje a nevadí jí Smart App Control, který sestavenou verzi na Windows 11 blokoval.
+- ZIP ke stažení na stránce Releases: rozbalit, poklepat na `install.cmd` a je hotovo. Číslo verze je vidět
+  dole na obrazovce nastavení.
+- GolemWatch je skript v PowerShellu s oknem ve WPF, takže se nic nekompiluje ani neinstaluje a nevadí mu
+  Smart App Control.
 
 ### Známé problémy
 
 - Aplikace zatím neběžela proti skutečným datům z Golemia, jen proti ukázkovým odpovědím sestaveným podle
   specifikace API.
+
+[0.1.0]: https://github.com/JohnyLeeJohnes/GolemWatch/releases/tag/v0.1.0

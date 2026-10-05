@@ -45,6 +45,7 @@ powershell -ExecutionPolicy Bypass -File GolemWatch.ps1 -Demo      # ukázková 
 powershell -ExecutionPolicy Bypass -File GolemWatch.ps1 -Demo -Screenshot docs\prehled.png
 powershell -ExecutionPolicy Bypass -File GolemWatch.ps1 -SettingsPath x.json -Screenshot docs\nastaveni.png
 powershell -ExecutionPolicy Bypass -File tools/make-icon.ps1       # ikona do assets/
+powershell -ExecutionPolicy Bypass -File tools/make-release.ps1    # dist/GolemWatch-<verze>.zip
 ```
 
 - `GolemWatch.cmd` spustí aplikaci bez konzole (`conhost --headless`), `install.cmd` vytvoří zástupce.
@@ -118,6 +119,17 @@ tests/, tools/
 3. Jméno do `$sections` v `GolemWatch.ps1`.
 4. Testy v `tests/unit.ps1` a kontrola v `tests/e2e.ps1`, řádek do tabulky v README.
 
+## Vydání
+
+1. Zvyš `$version` v `GolemWatch.ps1`; v `CHANGELOG.md` přidej sekci `## [x.y.z] - datum` a odkaz dole.
+2. Pusť `tests/unit.ps1` (hlídá, že obě čísla sedí) a `tests/e2e.ps1`.
+3. Commit `Release vX.Y.Z`, push, anotovaný tag `vX.Y.Z`, push tagu.
+4. `tools/make-release.ps1` a `gh release create vX.Y.Z dist/GolemWatch-x.y.z.zip --title "GolemWatch x.y.z"`.
+   Do poznámek patří postup z README (stáhnout, **odblokovat ZIP**, rozbalit, `install.cmd`).
+- ZIP stažený prohlížečem nese značku „z internetu“ a Explorer ji přenese na rozbalené soubory. PowerShell
+  s `-ExecutionPolicy Bypass` takové skripty spustí (ověřeno i se Smart App Control), poklepání na `.cmd`
+  s touhle značkou ale Windows brzdí. Proto krok „Odblokovat“ a `Unblock-File` v `-Install`.
+
 ## Stav a budoucnost
 
 - Hotovo: nastavení (klíč, místo, volby), přehled s kartami Odjezdy, V okolí, Svoz odpadu, Ovzduší,
@@ -126,8 +138,8 @@ tests/, tools/
   vrátí 401 a že funguje hledání přes Nominatim. První krok po získání klíče: `tests/live.ps1`.
 - Sporná místa specifikace, kde kód bere obě varianty: `AQ_hourly_index` (číslo vs. kód „1A“),
   `/v2/microclimate/points` (objekt vs. pole), `point_named` vs. `point_name`, pozice zabalená do pole navíc.
-- Chybí: `-Install` a `install.cmd` nebyly spuštěné naostro (stejný kód ověřen jen nad dočasnou složkou),
-  soubor s licencí.
+- Chybí: soubor s licencí. Stažení ZIPu prohlížečem a poklepání v Exploreru nikdo nezkoušel; ověřené je
+  rozbalení ZIPu do čisté složky a spuštění přes `GolemWatch.cmd` bez značky „z internetu“.
 - Plán: další datasety z Golemia (uživatel chce časem všechny). Zatím nepoužité: sdílená kola a auta
   (`/v2/vehiclesharing`), zahrady a hřiště, dopravní omezení (`/v2/traffic/restrictions`), polohy vozidel
   (`/v2/public/vehiclepositions`), cyklosčítače, energetika.

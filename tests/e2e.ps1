@@ -78,6 +78,7 @@ try {
     Check 'přehled je schovaný' (Shown RefreshButton) $false
     Check 'nabízí ukázková data' (Shown DemoButton) $true
     Check 'není se kam vracet' (Shown BackButton) $false
+    Check 'je vidět číslo verze' ((Text VersionText) -match '^GolemWatch \d+\.\d+\.\d+$') $true
     Check 'volby jsou předvyplněné' "$(Value StopsRangeBox)|$(Value WasteRangeBox)|$(Value ParkingRangeBox)|$(Value DeparturesBox)|$(Value RefreshBox)" '600|400|1500|12|30'
     Check 'všechny karty jsou zapnuté' "$(Toggled TransitChip) $(Toggled NearbyChip) $(Toggled WasteChip) $(Toggled AirChip) $(Toggled MicroclimateChip) $(Toggled ParkingChip)" 'On On On On On On'
     SetValue StopsRangeBox '4x5 0m'

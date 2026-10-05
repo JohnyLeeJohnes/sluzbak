@@ -1,0 +1,2 @@
+# cmd.exe čte spolehlivě jen konce řádků CRLF, ať si repozitář naklonuje kdokoli s jakýmkoli nastavením gitu.
+*.cmd text eol=crlf

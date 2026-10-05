@@ -2,3 +2,5 @@
 .idea/
 # Zástupce vytváří install.cmd, obsahuje cesty platné jen na jednom počítači.
 *.lnk
+# ZIP pro GitHub Release sestavuje tools/make-release.ps1.
+dist/
