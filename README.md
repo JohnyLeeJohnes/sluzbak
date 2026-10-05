@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/prehled.png" width="860" alt="Přehled: odjezdy, svoz odpadu, ovzduší, mikroklima a parkování">
+  <img src="docs/prehled.png" width="860" alt="Přehled: odjezdy, místa v okolí, svoz odpadu, ovzduší, mikroklima a parkování">
 </p>
 
 Zadáš svůj klíč ke [Golemio API](https://api.golemio.cz/docs/openapi/) a adresu. GolemWatch pak ukazuje, co se
@@ -31,6 +31,7 @@ děje v okolí, a sám se obnovuje.
 | Karta | Co v ní je | Odkud |
 | --- | --- | --- |
 | Odjezdy | nejbližší odjezdy ze zastávek do 600 m, zpoždění, zrušené spoje, mimořádnosti | `/v2/gtfs/stops`, `/v2/pid/departureboards` |
+| V okolí | nejbližší lékárna, knihovna, úřad, služebna městské policie a sběrný dvůr, s otevírací dobou | `/v2/medicalinstitutions`, `/v2/municipallibraries`, `/v2/municipalauthorities`, `/v2/municipalpolicestations`, `/v2/wastecollectionyards` |
 | Svoz odpadu | tři nejbližší stanoviště tříděného odpadu do 400 m, dny svozu, příští svoz, zaplnění podle senzoru | `/v2/sortedwastestations` |
 | | velkoobjemové kontejnery do 1,5 km, které teprve přijedou | `/v1/bulky-waste/stations` |
 | Ovzduší | index kvality a naměřené látky z nejbližší stanice ČHMÚ | `/v2/airqualitystations` |
@@ -80,7 +81,7 @@ Nastavení změníš kdykoli tlačítkem **Nastavení** v přehledu.
 - **Kde je nastavení.** V `%APPDATA%\GolemWatch\settings.json`: klíč, název místa a souřadnice. Klíč šifruje
   Windows (DPAPI), takže ho přečte jen tvůj účet na tomhle počítači. Na jiném počítači ho zadáš znovu.
 - **Limit API.** Golemio dovoluje 20 dotazů za 8 sekund na jeden klíč. První načtení přehledu jich potřebuje
-  něco přes deset, obnovení odjezdů jeden.
+  skoro tolik, obnovení odjezdů jeden. Aplikace si dotazy počítá a když by limit překročila, chvilku počká.
 - **První hledání zastávek chvíli trvá.** API neumí vrátit zastávky podle polohy, takže se jednou po spuštění
   stáhne jejich celý seznam.
 - **Když karta selže, ostatní jedou dál.** Chyba se ukáže přímo v kartě. Stará data se při chybě schovají,
@@ -101,6 +102,7 @@ Nastavení změníš kdykoli tlačítkem **Nastavení** v přehledu.
 | `tools/make-icon.ps1` | Vygeneruje ikonu do `assets/`. |
 | `tests/unit.ps1` | Testy čtení dat nad ukázkovými odpověďmi. |
 | `tests/e2e.ps1` | Test, který aplikaci prokliká přes UI Automation. |
+| `tests/live.ps1` | Zkouška naživo: načte všechny karty ze skutečného API a vypíše, co která dostala. |
 
 Chceš jiné barvy? Celá paleta je na začátku `GolemWatch.xaml`. Změny se projeví při dalším spuštění, nic se
 nesestavuje.
@@ -117,6 +119,15 @@ powershell -ExecutionPolicy Bypass -File tests/e2e.ps1
 
 Ani jeden nevolá síť a nepotřebuje klíč. Druhý během běhu několikrát otevře a zavře okno aplikace a pracuje
 s nastavením v dočasné složce, takže na to tvoje nesáhne.
+
+Se skutečným klíčem jde všechno projít naráz. Skript si klíč a místo vezme z nastavení aplikace, takže ji
+nejdřív jednou spusť a nastav:
+
+```
+powershell -ExecutionPolicy Bypass -File tests/live.ps1
+```
+
+U každé karty vypíše, kolik čeho dostala, nebo chybu. Klíč nevypisuje.
 
 Aplikace jde pustit i s ukázkovými daty místo sítě a umí uložit obrázek svého okna:
 

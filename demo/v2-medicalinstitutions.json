@@ -1,0 +1,47 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [14.4489,50.0757]},
+      "properties": {
+        "id": "00000000002-lekarna-na-korunni",
+        "name": "Lékárna Na Korunní",
+        "address": {"address_formatted": "Korunní 810/104, 10100 Praha-Vinohrady, Česko", "street_address": "Korunní 810/104", "postal_code": "10100", "address_locality": "Praha", "address_region": "Vinohrady", "address_country": "Česko"},
+        "district": "praha-10",
+        "type": {"description": "Lékárna", "group": "pharmacies", "id": "Z"},
+        "telephone": [],
+        "email": [],
+        "web": [],
+        "updated_at": "{{now-600}}",
+        "opening_hours": [
+          {"day_of_week": "Monday", "opens": "08:00", "closes": "18:00"}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [14.4352,50.0761]},
+      "properties": {
+        "id": "00000000001-lekarna-u-ludmily",
+        "name": "Lékárna U Ludmily",
+        "address": {"address_formatted": "Jugoslávská 620/29, 12000 Praha-Vinohrady, Česko", "street_address": "Jugoslávská 620/29", "postal_code": "12000", "address_locality": "Praha", "address_region": "Vinohrady", "address_country": "Česko"},
+        "district": "praha-2",
+        "type": {"description": "Lékárna", "group": "pharmacies", "id": "Z"},
+        "telephone": [],
+        "email": [],
+        "web": [],
+        "updated_at": "{{now-600}}",
+        "opening_hours": [
+          {"day_of_week": "Monday", "opens": "00:00", "closes": "23:59"},
+          {"day_of_week": "Tuesday", "opens": "00:00", "closes": "23:59"},
+          {"day_of_week": "Wednesday", "opens": "00:00", "closes": "23:59"},
+          {"day_of_week": "Thursday", "opens": "00:00", "closes": "23:59"},
+          {"day_of_week": "Friday", "opens": "00:00", "closes": "23:59"},
+          {"day_of_week": "Saturday", "opens": "00:00", "closes": "23:59"},
+          {"day_of_week": "Sunday", "opens": "00:00", "closes": "23:59"}
+        ]
+      }
+    }
+  ]
+}

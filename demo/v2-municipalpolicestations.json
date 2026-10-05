@@ -1,0 +1,17 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [14.4311, 50.0745]},
+      "properties": {
+        "id": "vinohrady-lublanska-21",
+        "cadastral_area": "Vinohrady",
+        "note": "Služebna",
+        "district": "praha-2",
+        "address": {"address_formatted": "Lublaňská 1729/21, 12000 Praha-Vinohrady, Česko", "street_address": "Lublaňská 1729/21", "postal_code": "12000", "address_locality": "Praha", "address_region": "Vinohrady", "address_country": "Česko"},
+        "updated_at": "{{now-600}}"
+      }
+    }
+  ]
+}

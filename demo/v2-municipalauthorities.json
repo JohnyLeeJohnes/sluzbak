@@ -1,0 +1,29 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [14.4369, 50.0749]},
+      "properties": {
+        "id": "urad-mestske-casti-praha-2",
+        "name": "Úřad městské části Praha 2",
+        "address": {"address_formatted": "náměstí Míru 600/20, 12000 Praha-Vinohrady, Česko"},
+        "district": "praha-2",
+        "type": {"description": "Úřad městské části", "id": "city-hall"},
+        "email": ["posta@example.cz"],
+        "telephone": ["+420 000 000 000"],
+        "web": ["example.cz"],
+        "official_board": "https://example.cz/deska",
+        "agendas": [],
+        "image": {"mimetype": "image/png", "size": 0, "url": "https://example.cz/urad.png"},
+        "opening_hours": [
+          {"day_of_week": "Monday", "opens": "08:00", "closes": "12:00", "description": "Úřední hodiny"},
+          {"day_of_week": "Monday", "opens": "13:00", "closes": "17:30", "description": "Úřední hodiny"},
+          {"day_of_week": "Wednesday", "opens": "08:00", "closes": "12:00", "description": "Úřední hodiny"},
+          {"day_of_week": "Wednesday", "opens": "13:00", "closes": "17:30", "description": "Úřední hodiny"}
+        ],
+        "updated_at": "{{now-600}}"
+      }
+    }
+  ]
+}

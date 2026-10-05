@@ -105,8 +105,33 @@ function Read-Demo([string]$directory, [string]$name) {
     ConvertFrom-ApiJson $text
 }
 
+# Golemio dovolí 20 dotazů za 8 sekund na jeden klíč; dva si necháváme v rezervě.
+$rateLimit = 18
+$rateWindow = 8.0
+
+# Sekce se načítají souběžně v několika vláknech, takže si časy odeslaných dotazů hlídají ve společné frontě
+# ($context.Limiter, System.Collections.Queue). Když je okno plné, počká se, až nejstarší dotaz vypadne.
+function Wait-RateLimit($limiter) {
+    # Ne "-not $limiter": prázdná fronta by se tvářila jako žádná.
+    if ($null -eq $limiter) { return }
+    while ($true) {
+        [Threading.Monitor]::Enter($limiter.SyncRoot)
+        try {
+            $now = [DateTime]::UtcNow
+            while ($limiter.Count -gt 0 -and ($now - $limiter.Peek()).TotalSeconds -ge $rateWindow) { $null = $limiter.Dequeue() }
+            if ($limiter.Count -lt $rateLimit) {
+                $limiter.Enqueue($now)
+                return
+            }
+            $wait = $rateWindow - ($now - $limiter.Peek()).TotalSeconds
+        } finally { [Threading.Monitor]::Exit($limiter.SyncRoot) }
+        Start-Sleep -Milliseconds ([Math]::Max(50, [int]($wait * 1000)))
+    }
+}
+
 function Invoke-Api($context, [string]$path, $query = @{}) {
     if ($context.Demo) { return Read-Demo $context.Demo $path }
+    Wait-RateLimit $context.Limiter
     Invoke-Http ('https://api.golemio.cz' + $path + (Format-Query $query)) $context.Token 'Golemio'
 }
 
@@ -494,6 +519,105 @@ function Get-Transit($context, [double]$latitude, [double]$longitude, $stops) {
         Departures = $departures
         Infotexts = @(@($board.infotexts) | Where-Object { $_ -and $_.text } | ForEach-Object { [pscustomobject]@{ Text = [string]$_.text } })
         Empty = if ($departures) { '' } else { 'V příští hodině a půl odsud nic nejede.' }
+    }
+}
+
+# ---- V okolí ----
+
+# Od každého druhu místa se ukáže to nejbližší. Range je v metrech: sběrných dvorů je málo, lékáren hodně.
+$nearbyKinds = @(
+    @{ Label = 'Lékárna'; Path = '/v2/medicalinstitutions'; Group = 'pharmacies'; Range = 3000 }
+    @{ Label = 'Knihovna'; Path = '/v2/municipallibraries'; Range = 5000 }
+    @{ Label = 'Úřad'; Path = '/v2/municipalauthorities'; Range = 5000 }
+    @{ Label = 'Městská policie'; Path = '/v2/municipalpolicestations'; Range = 5000 }
+    @{ Label = 'Sběrný dvůr'; Path = '/v2/wastecollectionyards'; Range = 10000 }
+)
+
+# "09:00" -> 540 minut od půlnoci; nic, když to není čas.
+function ConvertTo-Minutes($text) {
+    if ("$text" -match '^\s*(\d{1,2}):(\d\d)') { [int]$Matches[1] * 60 + [int]$Matches[2] }
+}
+
+function Format-Minutes([int]$minutes) { '{0}:{1:00}' -f [Math]::Floor($minutes / 60), ($minutes % 60) }
+
+# Z otevírací doby (dny v týdnu anglicky, časy "HH:mm") udělá "otevřeno do 18:00", "otevírá v 9:00",
+# "otevírá zítra v 8:00" nebo "otevírá po v 8:00". Vrací @{ Text; Open }, nebo nic, když doba chybí.
+function Get-OpenStatus($hours, $now) {
+    $valid = @(@($hours) | Where-Object {
+        $from = ConvertTo-PragueTime $_.valid_from
+        $through = ConvertTo-PragueTime $_.valid_through
+        $_ -and $null -ne (ConvertTo-Minutes $_.opens) -and $null -ne (ConvertTo-Minutes $_.closes) -and
+            # Samoobslužný provoz knihoven (vracení knih do boxu) není otevřeno.
+            $_.type -ne 'self_service' -and
+            (-not $from -or $from -le $now) -and (-not $through -or $through -ge $now)
+    })
+    if (-not $valid) { return }
+    # Mimořádná doba (svátky, prázdniny) má po dobu své platnosti přednost před běžnou.
+    $special = @($valid | Where-Object { $_.ContainsKey('is_default') -and -not $_.is_default })
+    if ($special) { $valid = $special }
+
+    $minute = $now.Hour * 60 + $now.Minute
+    foreach ($offset in 0..7) {
+        $day = $now.Date.AddDays($offset)
+        $today = @($valid | Where-Object { $_.day_of_week -eq [string]$day.DayOfWeek } | ForEach-Object {
+            $opens = ConvertTo-Minutes $_.opens
+            $closes = ConvertTo-Minutes $_.closes
+            # "08:00–00:00" znamená do půlnoci.
+            @{ Opens = $opens; Closes = if ($closes -le $opens) { 24 * 60 } else { $closes } }
+        } | Sort-Object { $_.Opens })
+
+        foreach ($interval in $today) {
+            if ($offset -eq 0 -and $interval.Opens -le $minute -and $minute -lt $interval.Closes) {
+                # Nonstop provoz bývá zapsaný jako 00:00–23:59.
+                $allDay = $interval.Opens -eq 0 -and $interval.Closes -ge 24 * 60 - 1
+                return @{ Text = if ($allDay) { 'otevřeno nonstop' } else { 'otevřeno do ' + (Format-Minutes $interval.Closes) }; Open = $true }
+            }
+            if ($offset -gt 0 -or $interval.Opens -gt $minute) {
+                $when = switch ($offset) { 0 { '' } 1 { 'zítra ' } default { $day.ToString('ddd', $cs) + ' ' } }
+                return @{ Text = "otevírá ${when}v " + (Format-Minutes $interval.Opens); Open = $false }
+            }
+        }
+    }
+    @{ Text = 'zavřeno'; Open = $false }
+}
+
+function Get-Nearby($context, [double]$latitude, [double]$longitude) {
+    $now = Get-PragueNow
+    $failure = $null
+    $places = @(foreach ($kind in $nearbyKinds) {
+        $query = [ordered]@{ latlng = Format-LatLng $latitude $longitude; range = $kind.Range; group = $kind.Group; limit = 3 }
+        # Každý druh je samostatný dotaz; když jeden selže, ostatní se ukážou i tak.
+        try { $found = Invoke-Api $context $kind.Path $query }
+        catch {
+            if (-not $failure) { $failure = $_ }
+            continue
+        }
+        $nearest = @(Get-Features $found $latitude $longitude | Sort-Object { $_.Distance })[0]
+        if (-not $nearest) { continue }
+
+        $p = $nearest.Properties
+        # Úřady mají jen celou adresu "ulice, PSČ město, země"; do karty stačí ulice.
+        $street = [string]@($p.address.street_address, ([string]$p.address.address_formatted).Split(',')[0] | Where-Object { $_ })[0]
+        $status = Get-OpenStatus $p.opening_hours $now
+        [pscustomobject]@{
+            Kind = $kind.Label
+            # Služebny městské policie jméno nemají, tak je zastoupí adresa.
+            Name = [string]@($p.name, $street, $kind.Label | Where-Object { $_ })[0]
+            Address = if ($p.name) { $street } else { [string]$p.cadastral_area }
+            Distance = Format-Distance $nearest.Distance
+            Status = if ($status) { $status.Text } else { '' }
+            StatusColor = if ($status -and $status.Open) { '#7BD88F' } else { '#8C93A8' }
+            # Sběrné dvory mají otevírací dobu jen jako volný text.
+            Hours = [string]$p.operating_hours
+        }
+    })
+    # Když selže úplně všechno, je to chyba klíče nebo sítě a má být vidět.
+    if (-not $places -and $failure) { throw $failure }
+
+    [pscustomobject]@{
+        Meta = 'nejbližší od každého'
+        Items = $places
+        Empty = if ($places) { '' } else { 'Golemio v okolí nic nenašlo.' }
     }
 }
 

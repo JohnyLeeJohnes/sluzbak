@@ -1,0 +1,28 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [14.4466, 50.0756]},
+      "properties": {
+        "id": "korunni",
+        "name": "Městská knihovna Korunní",
+        "address": {"address_formatted": "Korunní 2160/68, 10100 Praha 10 - Vinohrady, Česko", "street_address": "Korunní 2160/68", "postal_code": "10100", "address_locality": "Praha 10 - Vinohrady", "address_region": "Vinohrady", "address_country": "Česko"},
+        "district": "praha-10",
+        "email": "knihovna@example.cz",
+        "telephone": "+420 000 000 000",
+        "web": "https://example.cz/korunni",
+        "opening_hours": [
+          {"day_of_week": "Monday", "opens": "00:00", "closes": "23:59", "description": "Návratový box", "is_default": true, "valid_from": null, "valid_through": null, "type": "self_service"},
+          {"day_of_week": "Monday", "opens": "13:00", "closes": "19:00", "description": "Základní provozní doba", "is_default": true, "valid_from": null, "valid_through": null, "type": "standard"},
+          {"day_of_week": "Tuesday", "opens": "09:00", "closes": "19:00", "description": "Základní provozní doba", "is_default": true, "valid_from": null, "valid_through": null, "type": "standard"},
+          {"day_of_week": "Wednesday", "opens": "12:00", "closes": "19:00", "description": "Základní provozní doba", "is_default": true, "valid_from": null, "valid_through": null, "type": "standard"},
+          {"day_of_week": "Thursday", "opens": "09:00", "closes": "19:00", "description": "Základní provozní doba", "is_default": true, "valid_from": null, "valid_through": null, "type": "standard"},
+          {"day_of_week": "Friday", "opens": "09:00", "closes": "16:00", "description": "Základní provozní doba", "is_default": true, "valid_from": null, "valid_through": null, "type": "standard"}
+        ],
+        "services": [{"id": 1, "name": "Bezbariérový přístup", "description": null}],
+        "updated_at": "{{now-600}}"
+      }
+    }
+  ]
+}

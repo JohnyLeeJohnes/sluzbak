@@ -140,6 +140,65 @@ $nowhere = Get-Transit $demo 49.0 13.0 $null
 Check 'daleko od Prahy: hláška' $nowhere.Empty 'Do 600 metrů žádná zastávka PID není.'
 Check 'daleko od Prahy: nic' $nowhere.Departures.Count 0
 
+'--- v okolí'
+$nearby = Get-Nearby $demo $lat $lng
+Check 'od každého druhu jedno místo' (($nearby.Items | ForEach-Object Kind) -join ' | ') 'Lékárna | Knihovna | Úřad | Městská policie | Sběrný dvůr'
+$pharmacy = $nearby.Items[0]
+Check 'nejbližší lékárna, ne první v odpovědi' "$($pharmacy.Name) / $($pharmacy.Address)" 'Lékárna U Ludmily / Jugoslávská 620/29'
+Check 'nonstop' "$($pharmacy.Status) $($pharmacy.StatusColor)" 'otevřeno nonstop #7BD88F'
+CheckMatch 'vzdálenost' $pharmacy.Distance '^\d+ m$'
+CheckMatch 'knihovna: stav podle otevírací doby' $nearby.Items[1].Status '^(otevřeno do \d{1,2}:\d\d|otevírá (zítra |[a-zčú]{2} )?v \d{1,2}:\d\d)$'
+Check 'úřad: ulice z celé adresy' $nearby.Items[2].Address 'náměstí Míru 600/20'
+$police = $nearby.Items[3]
+Check 'policie: místo jména adresa' "$($police.Name) / $($police.Address) / $($police.Status)|" 'Lublaňská 1729/21 / Vinohrady / |'
+Check 'sběrný dvůr: otevírací doba textem' "$($nearby.Items[4].Hours) / $($nearby.Items[4].Status)|" 'Po–Pá 8:30–18:00 (v zimě do 17:00), So 8:30–15:00 / |'
+
+'--- otevírací doba'
+# 5. 10. 2026 je pondělí.
+function At([int]$day, [int]$hour, [int]$minute) { [DateTimeOffset]::new(2026, 10, $day, $hour, $minute, 0, [TimeSpan]::FromHours(2)) }
+$office = @(
+    @{ day_of_week = 'Monday'; opens = '08:00'; closes = '12:00' }
+    @{ day_of_week = 'Monday'; opens = '13:00'; closes = '17:30' }
+    @{ day_of_week = 'Wednesday'; opens = '08:00'; closes = '12:00' }
+)
+$open = Get-OpenStatus $office (At 5 10 30)
+Check 'otevřeno' "$($open.Text) $($open.Open)" 'otevřeno do 12:00 True'
+$pause = Get-OpenStatus $office (At 5 12 0)
+Check 'polední pauza' "$($pause.Text) $($pause.Open)" 'otevírá v 13:00 False'
+Check 'večer: další úřední den je středa' (Get-OpenStatus $office (At 5 18 0)).Text 'otevírá st v 8:00'
+Check 'den předem' (Get-OpenStatus $office (At 6 9 0)).Text 'otevírá zítra v 8:00'
+Check 'bez otevírací doby nic' ($null -eq (Get-OpenStatus $null (At 5 10 0))) $true
+Check 'nečitelné časy nic' ($null -eq (Get-OpenStatus @(@{ day_of_week = 'Monday'; opens = 'dle domluvy'; closes = '' }) (At 5 10 0))) $true
+Check 'do půlnoci' (Get-OpenStatus @(@{ day_of_week = 'Monday'; opens = '18:00'; closes = '00:00' }) (At 5 23 30)).Text 'otevřeno do 24:00'
+$library = @(
+    @{ day_of_week = 'Monday'; opens = '00:00'; closes = '23:59'; type = 'self_service'; is_default = $true }
+    @{ day_of_week = 'Monday'; opens = '13:00'; closes = '19:00'; type = 'standard'; is_default = $true }
+)
+Check 'samoobsluha se nepočítá' (Get-OpenStatus $library (At 5 10 0)).Text 'otevírá v 13:00'
+$holiday = $library + @{
+    day_of_week = 'Monday'; opens = '09:00'; closes = '11:00'; type = 'standard'; is_default = $false
+    valid_from = '2026-10-04T22:00:00.000Z'; valid_through = '2026-10-11T21:59:59.000Z'
+}
+Check 'mimořádná doba má přednost' (Get-OpenStatus $holiday (At 5 10 0)).Text 'otevřeno do 11:00'
+Check 'po skončení platnosti zase běžná' (Get-OpenStatus $holiday (At 12 14 0)).Text 'otevřeno do 19:00'
+
+'--- limit API'
+$queue = New-Object System.Collections.Queue
+1..17 | ForEach-Object { $queue.Enqueue([DateTime]::UtcNow) }
+$watch = [Diagnostics.Stopwatch]::StartNew()
+Wait-RateLimit $queue
+Check 'pod limitem se nečeká' ($watch.ElapsedMilliseconds -lt 200) $true
+Check 'dotaz se zapíše do fronty' $queue.Count 18
+$queue.Clear()
+$queue.Enqueue([DateTime]::UtcNow.AddSeconds(-7.6))
+1..17 | ForEach-Object { $queue.Enqueue([DateTime]::UtcNow) }
+$watch.Restart()
+Wait-RateLimit $queue
+Check 'plné okno počká, až nejstarší dotaz vypadne' ($watch.ElapsedMilliseconds -ge 250 -and $watch.ElapsedMilliseconds -lt 3000) $true
+Check 've frontě zůstává jen posledních 8 sekund' $queue.Count 18
+Wait-RateLimit $null
+Check 'bez fronty se nic nehlídá' $true $true
+
 '--- nastavení'
 $found = @(Find-Address $demo 'náměstí Míru')
 Check 'nalezené adresy' $found.Count 3

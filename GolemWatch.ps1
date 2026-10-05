@@ -58,7 +58,7 @@ $demoPlace = @{ Name = 'Náměstí Míru, Praha 2'; Latitude = 50.0753; Longitud
 $unnamed = 'Vlastní místo'
 
 # Ke každé sekci patří funkce Get-<sekce> v Golemio.ps1 a prvky <sekce>Meta, <sekce>State a <sekce>Body v okně.
-$sections = 'Transit', 'Waste', 'Air', 'Microclimate', 'Parking'
+$sections = 'Transit', 'Nearby', 'Waste', 'Air', 'Microclimate', 'Parking'
 $transitEvery = [TimeSpan]::FromSeconds(30)
 $allEvery = [TimeSpan]::FromMinutes(10)
 
@@ -77,8 +77,11 @@ $state = @{
 
 function Test-Demo { $Demo -or $state.Trial }
 function Get-Place { if ($state.Trial) { $demoPlace } else { $state.Saved } }
+# Všechny úlohy sdílejí jednu frontu časů odeslaných dotazů, podle které Golemio.ps1 hlídá limit API.
+$limiter = New-Object System.Collections.Queue
 function Get-Context {
-    if (Test-Demo) { @{ Token = ''; Demo = $demoDirectory } } else { @{ Token = $state.Saved.Token; Demo = $null } }
+    if (Test-Demo) { @{ Token = ''; Demo = $demoDirectory } }
+    else { @{ Token = $state.Saved.Token; Demo = $null; Limiter = $limiter } }
 }
 
 # ---- Nastavení na disku ----
@@ -129,7 +132,7 @@ $worker = {
     }
 }.ToString()
 
-$pool = [RunspaceFactory]::CreateRunspacePool(1, 6)
+$pool = [RunspaceFactory]::CreateRunspacePool(1, 8)
 $pool.Open()
 $jobs = New-Object System.Collections.ArrayList
 
@@ -282,7 +285,7 @@ function Read-Coordinate([string]$text, [double]$limit) {
 
 # S parametrem -Demo se neptáme sítě ani tady, aby šlo nastavení projít v testech.
 function Get-SetupContext([string]$token) {
-    @{ Token = $token; Demo = $(if ($Demo) { $demoDirectory }) }
+    @{ Token = $token; Demo = $(if ($Demo) { $demoDirectory }); Limiter = $limiter }
 }
 
 function Find-Place {

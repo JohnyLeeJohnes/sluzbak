@@ -132,7 +132,10 @@ try {
     Check 'mikroklima: hodnota' (WaitFor { Named '14,2 °C' }) $true
     Check 'parkování: volná místa' (WaitFor { Named 'volných z 180' }) $true
     Check 'parkování: režim a vzdálenost' (Named 'Placené · 520 m') $true
-    Check 'stavové texty jsou schované' "$(Shown TransitState)$(Shown WasteState)$(Shown AirState)$(Shown MicroclimateState)$(Shown ParkingState)" 'FalseFalseFalseFalseFalse'
+    Check 'v okolí: nejbližší lékárna' (WaitFor { Named 'Lékárna U Ludmily' }) $true
+    Check 'v okolí: otevírací doba' (Named 'otevřeno nonstop') $true
+    Check 'v okolí: sběrný dvůr' (Named 'Sběrný dvůr Perucká') $true
+    Check 'stavové texty jsou schované' "$(Shown TransitState)$(Shown NearbyState)$(Shown WasteState)$(Shown AirState)$(Shown MicroclimateState)$(Shown ParkingState)" 'FalseFalseFalseFalseFalseFalse'
     Check 'čas aktualizace' ((Text UpdatedText) -match '^aktualizováno \d{1,2}:\d\d$') $true
 
     Check 'nastavení je na disku' (Test-Path $settings) $true

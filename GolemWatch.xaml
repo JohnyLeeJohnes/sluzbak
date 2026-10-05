@@ -327,6 +327,16 @@
             <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
         </Style>
 
+        <!-- Řádek, který u některých položek chybí: bez textu nezabírá místo. -->
+        <Style x:Key="SmallOptional" TargetType="TextBlock" BasedOn="{StaticResource Small}">
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Style.Triggers>
+                <Trigger Property="Text" Value="">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
     </Window.Resources>
 
     <!-- Pozadí má i kořenový prvek, aby bylo na obrázku okna (-Screenshot). -->
@@ -526,6 +536,39 @@
                                                         <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="12"/>
                                                     </DockPanel>
                                                 </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- V okolí: od každého druhu místa to nejbližší -->
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <DockPanel>
+                                    <TextBlock Style="{StaticResource CardGlyph}" Text="&#xE81D;"/>
+                                    <TextBlock Style="{StaticResource CardTitle}" Text="V okolí"/>
+                                    <TextBlock x:Name="NearbyMeta" Style="{StaticResource CardMeta}"/>
+                                </DockPanel>
+                                <TextBlock x:Name="NearbyState" Style="{StaticResource CardState}"/>
+                                <StackPanel x:Name="NearbyBody" Visibility="Collapsed" Margin="0,4,0,0">
+                                    <ItemsControl ItemsSource="{Binding Items}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Margin="0,12,0,0">
+                                                    <DockPanel>
+                                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Distance}" Style="{StaticResource Small}" Margin="10,0,0,0"/>
+                                                        <TextBlock Text="{Binding Kind}" Style="{StaticResource SubLabel}"/>
+                                                    </DockPanel>
+                                                    <DockPanel Margin="0,2,0,0">
+                                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" Foreground="{Binding StatusColor}"
+                                                                   FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                                        <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                    </DockPanel>
+                                                    <TextBlock Text="{Binding Address}" Style="{StaticResource SmallOptional}"/>
+                                                    <TextBlock Text="{Binding Hours}" Style="{StaticResource SmallOptional}"/>
+                                                </StackPanel>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>

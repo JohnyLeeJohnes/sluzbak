@@ -18,6 +18,8 @@ stahují a zobrazují. Vzorem je sesterský projekt Spáč (`C:\Projects\Persona
   `tests/unit.ps1`. `.cmd` soubory jsou čistě ASCII.
 - Funkce se jmenují `Sloveso-Podstatné` (`Get-Waste`, `Show-State`), proměnné camelCase, parametry skriptu PascalCase.
 - Komentáře vysvětlují *proč*, ne *co*.
+- Každá funkce datové vrstvy dostává `$context = @{ Token; Demo; Limiter }`: `Demo` je složka s ukázkovými
+  odpověďmi místo sítě, `Limiter` fronta sdílená všemi úlohami pro hlídání limitu API.
 - `Golemio.ps1` nemá o okně tušení. Funkce `Get-<Sekce>` vracejí `[pscustomobject]` připravený k zobrazení:
   hotové texty, barvy jako `#RRGGBB`, vždy `Meta` (text do záhlaví karty) a `Empty` (hláška místo dat, jinak `''`).
 - Chyby z datové vrstvy: `throw (New-ApiError <druh> <česká hláška>)`; druh je v `Exception.Data['Kind']`
@@ -56,6 +58,8 @@ powershell -ExecutionPolicy Bypass -File tests/e2e.ps1
 - `tests/e2e.ps1` – UI Automation: první spuštění, validace, hledání adresy, uložení, načtení nastavení, chyba
   v jedné kartě. Otevírá skutečná okna, nastavení má v dočasné složce.
 - Oba vracejí počet chyb jako návratový kód a **nevolají síť**. Coverage se neměří.
+- `tests/live.ps1` – zkouška naživo: klíč a místo z uloženého nastavení aplikace, vypíše, co která karta
+  dostala, u chyb zpracování i místo v kódu. Volá skutečné API; klíč nevypisuje. Pouští ji uživatel.
 - V e2e: schované prvky ve stromu zůstávají, viditelnost se pozná podle `IsOffscreen`.
 
 ## Struktura
@@ -84,7 +88,10 @@ tests/, tools/
   - čísla z JSON jsou `Decimal`, formátovat vždy s explicitní kulturou (`$cs`, `$invariant`);
   - `Where-Object vlastnost -eq …` nefunguje na slovnících z JSON, používat blok `{ $_.x -eq … }`.
 - Golemio API:
-  - hlavička `X-Access-Token`, limit 20 požadavků za 8 s, nejvýš 10 000 řádků na požadavek;
+  - hlavička `X-Access-Token`, nejvýš 10 000 řádků na požadavek;
+  - limit 20 požadavků za 8 s na klíč: `Wait-RateLimit` jich pustí 18 a s dalším počká. První načtení přehledu
+    jich potřebuje kolem 18, takže každá nová karta už znamená čekání;
+  - endpointy míst (`/v2/medicalinstitutions` a podobné) podle `latlng` jen řadí, vzdálenost omezuje `range`;
   - `/v2/gtfs/stops` nemá filtr podle polohy: čte se celý seznam po stránkách, výsledek si okno pamatuje;
   - `/v3/parking` filtruje jen přes `boundingBox`, obsazenost je zvlášť v `/v3/parking-measurements`;
   - `/v1/bulky-waste/stations` má `range` v kilometrech (ostatní v metrech) a vlastnosti v camelCase.
@@ -102,15 +109,17 @@ tests/, tools/
 
 ## Stav a budoucnost
 
-- Hotovo: nastavení, přehled s kartami Odjezdy, Svoz odpadu, Ovzduší, Mikroklima, Parkování, ukázkový režim.
+- Hotovo: nastavení, přehled s kartami Odjezdy, V okolí, Svoz odpadu, Ovzduší, Mikroklima, Parkování,
+  ukázkový režim, hlídání limitu API.
 - **Neověřeno proti živému API s platným klíčem** – při vývoji žádný nebyl. Ověřeno je jen, že neplatný klíč
-  vrátí 401 a že funguje hledání přes Nominatim. První krok po získání klíče: projít všechny karty naživo.
+  vrátí 401 a že funguje hledání přes Nominatim. První krok po získání klíče: `tests/live.ps1`.
 - Sporná místa specifikace, kde kód bere obě varianty: `AQ_hourly_index` (číslo vs. kód „1A“),
   `/v2/microclimate/points` (objekt vs. pole), `point_named` vs. `point_name`, pozice zabalená do pole navíc.
-- Chybí: test proti živému API (měl by brát klíč z proměnné `GOLEMIO_TOKEN`), `-Install` a `install.cmd`
-  nebyly spuštěné naostro (stejný kód ověřen jen nad dočasnou složkou), soubor s licencí.
-- Plán: další datasety z Golemia (uživatel chce časem všechny), polohy vozidel
-  (`/v2/public/vehiclepositions`).
+- Chybí: `-Install` a `install.cmd` nebyly spuštěné naostro (stejný kód ověřen jen nad dočasnou složkou),
+  soubor s licencí.
+- Plán: další datasety z Golemia (uživatel chce časem všechny). Zatím nepoužité: sdílená kola a auta
+  (`/v2/vehiclesharing`), zahrady a hřiště, dopravní omezení (`/v2/traffic/restrictions`), polohy vozidel
+  (`/v2/public/vehiclepositions`), cyklosčítače, energetika.
 
 ## Minulé úpravy
 

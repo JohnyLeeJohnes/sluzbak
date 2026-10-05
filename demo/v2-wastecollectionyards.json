@@ -1,0 +1,24 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [14.4442, 50.0655]},
+      "properties": {
+        "id": "sberny-dvur-perucka",
+        "name": "Sběrný dvůr Perucká",
+        "address": {"address_formatted": "Perucká 2542/10, 12000 Praha-Vinohrady, Česko", "street_address": "Perucká 2542/10", "postal_code": "12000", "address_locality": "Praha", "address_region": "Vinohrady", "address_country": "Česko"},
+        "district": "praha-2",
+        "contact": "000 000 000",
+        "operating_hours": "Po–Pá 8:30–18:00 (v zimě do 17:00), So 8:30–15:00",
+        "operator": "Ukázkový provozovatel",
+        "type": "SDHMP",
+        "icz": "CZA00000",
+        "properties": [
+          {"id": "ODPADPRIJEM", "description": "Příjem odpadu", "value": "objemný odpad, kovy, dřevo, elektro"}
+        ],
+        "updated_at": "{{now-600}}"
+      }
+    }
+  ]
+}
