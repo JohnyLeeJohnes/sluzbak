@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GolemWatch.Core/GolemWatch.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GolemWatch.Tests/GolemWatch.Tests.csproj" />
+  </Folder>
+</Solution>
