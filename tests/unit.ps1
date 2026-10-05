@@ -68,7 +68,7 @@ $waste = Get-Waste $demo $lat $lng
 Check 'stanoviště' $waste.Stations.Count 2
 Check 'nejbližší stanoviště' $waste.Stations[0].Name 'Náměstí Míru 820/9'
 CheckMatch 'vzdálenost stanoviště' $waste.Stations[0].Distance '^\d+ m$'
-Check 'druhy seřazené, papír jen jednou' (($waste.Stations[0].Kinds | ForEach-Object Type) -join ', ') 'Barevné sklo, Nápojové kartóny, Papír, Plast'
+Check 'druhy podle nejbližšího svozu, papír jen jednou' (($waste.Stations[0].Kinds | ForEach-Object Type) -join ', ') 'Plast, Papír, Nápojové kartóny, Barevné sklo'
 $paper = $waste.Stations[0].Kinds | Where-Object Type -eq 'Papír'
 Check 'papír: dny svozu' $paper.PickDays 'Po, St, Pá'
 Check 'papír: další svoz' $paper.Next 'zítra'
@@ -237,6 +237,11 @@ try {
     # Neznámý index se ukáže aspoň kódem.
     [IO.File]::WriteAllText("$quirks\v2-airqualitystations.json", ($text -replace '"AQ_hourly_index": 2', '"AQ_hourly_index": "9Z"'), $utf8)
     Check 'neznámý index' (Get-Air $alt $lat $lng).Index 'Index 9Z'
+
+    # Měření stará dva měsíce (tak to Golemio naživo vracelo) se jako aktuální neukáže.
+    [IO.File]::WriteAllText("$quirks\v2-airqualitystations.json", ($text -replace '\{\{now-25\}\}', '2026-08-12T06:45:00.621Z'), $utf8)
+    Check 'staré měření ovzduší' (Get-Air $alt $lat $lng).Empty 'Golemio má poslední měření ovzduší z 12. 8. v 8:45. Novější teď neposkytuje.'
+    [IO.File]::WriteAllText("$quirks\v2-airqualitystations.json", $text, $utf8)
 
     # Body mikroklimatu jako jeden objekt místo seznamu, název v point_name.
     [IO.File]::WriteAllText("$quirks\v2-microclimate-points.json",

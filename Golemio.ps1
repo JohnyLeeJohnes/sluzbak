@@ -80,6 +80,8 @@ function ConvertFrom-ApiJson([string]$text) {
 function Get-HttpClient {
     if (-not $global:GolemWatchHttp) {
         [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+        # Výchozí dvě spojení na server nestačí: karty se čtou naráz a za stahováním zastávek by ostatní čekaly.
+        [Net.ServicePointManager]::DefaultConnectionLimit = [Math]::Max([Net.ServicePointManager]::DefaultConnectionLimit, 6)
         $handler = New-Object System.Net.Http.HttpClientHandler
         $handler.AutomaticDecompression = 'GZip, Deflate'
         $global:GolemWatchHttp = New-Object System.Net.Http.HttpClient $handler
@@ -91,13 +93,24 @@ function Get-HttpClient {
 }
 
 function Invoke-Http([string]$uri, [string]$token, [string]$service) {
-    $request = New-Object System.Net.Http.HttpRequestMessage ([Net.Http.HttpMethod]::Get), $uri
-    if ($token) { $null = $request.Headers.TryAddWithoutValidation('X-Access-Token', $token.Trim()) }
-    try {
-        $response = (Get-HttpClient).SendAsync($request).GetAwaiter().GetResult()
-        $bytes = $response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
-    } catch {
-        throw (New-ApiError 'Network' "Nepodařilo se spojit se službou $service. Zkontroluj připojení k internetu.")
+    # Druhý pokus spraví spojení, které server mezitím zavřel, i chvilkový výpadek. Čte se jen (GET), takže neuškodí.
+    foreach ($attempt in 1, 2) {
+        $request = New-Object System.Net.Http.HttpRequestMessage ([Net.Http.HttpMethod]::Get), $uri
+        if ($token) { $null = $request.Headers.TryAddWithoutValidation('X-Access-Token', $token.Trim()) }
+        try {
+            $response = (Get-HttpClient).SendAsync($request).GetAwaiter().GetResult()
+            $bytes = $response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
+            break
+        } catch {
+            # Po vypršení času se znovu nezkouší, čekalo by se dvakrát tak dlouho.
+            if ($_.Exception.GetBaseException() -is [OperationCanceledException]) {
+                throw (New-ApiError 'Network' "Služba $service neodpověděla včas. Zkus to za chvíli.")
+            }
+            if ($attempt -eq 2) {
+                throw (New-ApiError 'Network' "Nepodařilo se spojit se službou $service. Zkontroluj připojení k internetu.")
+            }
+            Start-Sleep -Milliseconds 400
+        }
     }
     if (-not $response.IsSuccessStatusCode) { throw (ConvertTo-ApiError ([int]$response.StatusCode)) }
 
@@ -260,10 +273,12 @@ function Get-Waste($context, [double]$latitude, [double]$longitude) {
                 Type = if ($first.trash_type.description) { [string]$first.trash_type.description } else { 'Odpad' }
                 Color = if ($color) { $color } else { '#8C93A8' }
                 PickDays = [string]$first.cleaning_frequency.pick_days
+                Day = if ($next) { $next } else { [DateTime]::MaxValue }
                 Next = if ($next) { Format-Day $next } else { '' }
                 Fill = if ($null -ne $fill) { "$fill %" } else { '' }
             }
-        } | Sort-Object Type)
+        # Nahoře to, co se sveze nejdřív; druhy bez termínu až na konci.
+        } | Sort-Object Day, Type)
 
         [pscustomobject]@{
             Name = if ($station.name) { [string]$station.name } else { 'Stanoviště' }
@@ -276,6 +291,7 @@ function Get-Waste($context, [double]$latitude, [double]$longitude) {
     # Velkoobjemové kontejnery jsou navíc; když selžou, tříděný odpad se ukáže i tak.
     $bulky = @()
     $bulkyError = ''
+    $bulkyAllowed = $true
     try {
         # Jako jediný bere tenhle endpoint vzdálenost v kilometrech.
         $containers = Invoke-Api $context '/v1/bulky-waste/stations' ([ordered]@{ latlng = Format-LatLng $latitude $longitude; range = 2 })
@@ -292,13 +308,17 @@ function Get-Waste($context, [double]$latitude, [double]$longitude) {
                 }
             }
         } | Sort-Object Day, Meters | Select-Object -First 4)
-    } catch { $bulkyError = $_.Exception.Message }
+    } catch {
+        # Běžný klíč k téhle sadě přístup mít nemusí. To není porucha, část se prostě neukáže.
+        if ($_.Exception.Data['Kind'] -eq 'Forbidden') { $bulkyAllowed = $false } else { $bulkyError = $_.Exception.Message }
+    }
 
     [pscustomobject]@{
         Meta = if ($nests) { "$($nests.Count) nejbližší" } else { '' }
         Stations = $nests
+        ShowBulky = $bulkyAllowed
         Bulky = $bulky
-        BulkyNote = if ($bulkyError) { $bulkyError } elseif (-not $bulky) { 'V okolí teď žádný není v plánu.' } else { '' }
+        BulkyNote = if ($bulkyError) { $bulkyError } elseif ($bulkyAllowed -and -not $bulky) { 'V okolí teď žádný není v plánu.' } else { '' }
         Empty = if ($nests) { '' } else { "Do $(Format-Distance $range) žádné stanoviště tříděného odpadu není." }
     }
 }
@@ -311,14 +331,30 @@ function Format-Formula([string]$code) {
     $code -replace '2', [string][char]0x2082 -replace '3', [string][char]0x2083
 }
 
+# Index ovzduší je hodinový; starší měření už o vzduchu venku nic neříká.
+$airFreshHours = 6
+
 function Get-Air($context, [double]$latitude, [double]$longitude) {
     $stations = Invoke-Api $context '/v2/airqualitystations' ([ordered]@{ latlng = Format-LatLng $latitude $longitude; limit = 5 })
     $nearest = @(Get-Features $stations $latitude $longitude | Sort-Object { $_.Distance })
     if (-not $nearest) { return [pscustomobject]@{ Meta = ''; Empty = 'Golemio nevrátilo žádnou měřicí stanici.' } }
 
     # Nejbližší stanice nemusí zrovna měřit; pak se vezme nejbližší, která data má.
-    $station = @($nearest | Where-Object { @($_.Properties.measurement.components | Where-Object { $null -ne $_.averaged_time.value }).Count })[0]
-    if (-not $station) { $station = $nearest[0] }
+    $measuring = @($nearest | Where-Object { @($_.Properties.measurement.components | Where-Object { $null -ne $_.averaged_time.value }).Count })
+    $now = Get-PragueNow
+    # Když Golemio nová data nedostává, vrací dál poslední stav. Ten se jako aktuální ukázat nesmí.
+    $fresh = @($measuring | Where-Object {
+        $time = ConvertTo-PragueTime $_.Properties.updated_at
+        -not $time -or ($now - $time).TotalHours -le $airFreshHours
+    })
+    if ($measuring -and -not $fresh) {
+        $last = @($measuring | ForEach-Object { ConvertTo-PragueTime $_.Properties.updated_at } | Sort-Object -Descending)[0]
+        return [pscustomobject]@{
+            Meta = ''
+            Empty = "Golemio má poslední měření ovzduší z $($last.ToString('d. M.', $cs)) v $(Format-Clock $last). Novější teď neposkytuje."
+        }
+    }
+    $station = if ($fresh) { $fresh[0] } else { $nearest[0] }
     $measurement = $station.Properties.measurement
 
     # Číselníky jsou jen na popisky a barvy; bez nich se ukážou holé kódy.

@@ -738,7 +738,18 @@
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
 
-                                    <TextBlock Style="{StaticResource SubLabel}" Text="Velkoobjemové kontejnery" Margin="0,2,0,0"/>
+                                    <!-- Klíč bez přístupu k velkoobjemovým kontejnerům: nadpis se schová, seznam i poznámka jsou prázdné. -->
+                                    <TextBlock Text="Velkoobjemové kontejnery" Margin="0,2,0,0">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SubLabel}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ShowBulky}" Value="False">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                     <ItemsControl ItemsSource="{Binding Bulky}" Focusable="False">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
@@ -753,7 +764,7 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                    <TextBlock Text="{Binding BulkyNote}" Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                                    <TextBlock Text="{Binding BulkyNote}" Style="{StaticResource SmallOptional}" Margin="0,6,0,0"/>
                                 </StackPanel>
                             </StackPanel>
                         </Border>

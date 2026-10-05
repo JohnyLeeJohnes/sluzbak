@@ -88,6 +88,8 @@ $state = @{
     Finished = @{}         # sekce, které se od změny místa aspoň jednou dočetly
     Updated = $null
     Manual = $false        # načítání, o které si řekl uživatel; jen to se v záhlaví ohlašuje
+    Finding = $false       # běží hledání adresy
+    Found = $null          # naposledy nalezená adresa; Enter v poli s ní ukládá, místo aby hledal znovu
     TransitDue = [DateTime]::MaxValue
     AllDue = [DateTime]::MaxValue
     ShotDue = $null
@@ -340,6 +342,7 @@ function Show-Setup {
     foreach ($name in $sections) { $ui["${name}Chip"].IsChecked = $name -notin $options.Hidden }
     $ui.ResultsList.ItemsSource = $null
     $ui.ResultsList.Visibility = 'Collapsed'
+    $state.Found = $null
     Set-SetupStatus ''
 
     # Je-li se kam vrátit, nabízí se návrat; jinak ukázka, ať jde aplikace zkusit i bez klíče.
@@ -369,15 +372,16 @@ function Find-Place {
         Set-SetupStatus 'Napiš adresu, třeba „Korunní 2, Praha“.' -IsError
         return
     }
-    if (-not $ui.FindButton.IsEnabled) { return }
+    # Tlačítko se během hledání nevypíná: vypnutím by přišlo o fokus a klávesnice by pak v okně nedělala nic.
+    if ($state.Finding) { return }
 
-    $ui.FindButton.IsEnabled = $false
+    $state.Finding = $true
     Set-SetupStatus 'Hledám…'
-    Start-Work 'Find' 'Find-Address' @((Get-SetupContext ''), $text) 'Complete-Find'
+    Start-Work 'Find' 'Find-Address' @((Get-SetupContext ''), $text) 'Complete-Find' $text
 }
 
 function Complete-Find($job, $result) {
-    $ui.FindButton.IsEnabled = $true
+    $state.Finding = $false
     if (-not $result.Ok) { Set-SetupStatus $result.Message -IsError; return }
 
     $found = @($result.Data | Where-Object { $_ })
@@ -389,7 +393,11 @@ function Complete-Find($job, $result) {
     }
     # První výsledek bývá ten pravý, tak se rovnou vybere (a tím vyplní souřadnice).
     $ui.ResultsList.SelectedIndex = 0
-    Set-SetupStatus $(if ($found.Count -gt 1) { 'Vybral jsem první výsledek. Jestli nesedí, klikni na jiný.' } else { '' })
+    # Další Enter v poli s touhle adresou už nehledá znovu, ale ukládá.
+    $state.Found = $job.Tag
+    # Po kliknutí na Najít by Enter na tlačítku hledal pořád dokola; z pole adresy se jím pokračuje dál.
+    if ($ui.FindButton.IsFocused) { $null = $ui.AddressBox.Focus() }
+    Set-SetupStatus $(if ($found.Count -gt 1) { 'Vybral jsem první výsledek. Jestli nesedí, klikni na jiný.' } else { 'Adresa nalezena. Enter nebo tlačítko níž ji uloží.' })
 }
 
 function Save-Setup {
@@ -438,6 +446,8 @@ function Complete-Save($job, $result) {
     if (-not $result.Ok) {
         $text = if ($result.Kind -eq 'Unauthorized') { 'Golemio tenhle klíč odmítlo. Zkontroluj, že je zkopírovaný celý.' } else { $result.Message }
         Set-SetupStatus $text -IsError
+        # Vypnutý formulář přišel o fokus; bez tohohle by po neúspěchu klávesnice nedělala nic.
+        $null = $(if ($result.Kind -eq 'Unauthorized') { $ui.TokenBox } else { $ui.SaveButton }).Focus()
         return
     }
     try { Save-Settings $job.Tag }
@@ -512,7 +522,14 @@ try {
     $ui.AddressBox.Add_KeyDown({
         param($box, $e)
         if ($e.Key -ne 'Return') { return }
-        Find-Place
+        # Adresa, která se už našla, se Enterem uloží; nová nebo změněná se nejdřív hledá.
+        if ($state.Found -and $ui.AddressBox.Text.Trim() -eq $state.Found) { Save-Setup } else { Find-Place }
+        $e.Handled = $true
+    })
+    $ui.ResultsList.Add_KeyDown({
+        param($list, $e)
+        if ($e.Key -ne 'Return') { return }
+        Save-Setup
         $e.Handled = $true
     })
 

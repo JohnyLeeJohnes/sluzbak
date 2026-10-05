@@ -8,6 +8,18 @@ verze se řídí [sémantickým verzováním](https://semver.org/lang/cs/).
 ### Přidáno
 
 - Licence MIT.
+- Když se spojení s Golemiem nepovede, dotaz se jednou zopakuje.
+
+### Změněno
+
+- Svoz odpadu: druhy odpadu jsou seřazené podle toho, co se sveze nejdřív.
+- Ovzduší: měření starší než 6 hodin se neukáže jako aktuální; karta místo něj napíše, z kdy je poslední.
+- Velkoobjemové kontejnery se neukazují, když k nim klíč nemá přístup (dřív tam byla chybová hláška).
+
+### Opraveno
+
+- Hledání adresy: po kliknutí na **Najít** přestala v okně fungovat klávesnice a Enter v poli s adresou
+  hledal pořád dokola. Teď první Enter hledá a druhý nalezenou adresu uloží.
 
 ## [0.1.0] - 2026-10-05
 
