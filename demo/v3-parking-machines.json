@@ -1,0 +1,9 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [14.4302, 50.0802]},
+     "properties": {"id": "tsk_v2-2b7d5a10-0c1e-4d7b-9f6a-3f2e1d0c9b8a", "primary_source": "tsk_v2", "code": "10000321", "machine_type": "payment_machine", "valid_from": "2024-07-30T03:04:00.480Z", "tariff_id": "bdd68c37-2462-4825-befa-1eeab518dfbd"}},
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [14.4401, 50.0744]},
+     "properties": {"id": "tsk_v2-1f4a3c64-5368-482e-99c2-ed26616a6d97", "primary_source": "tsk_v2", "code": "10000107", "machine_type": "payment_machine", "valid_from": "2024-07-30T03:04:00.480Z", "tariff_id": "bdd68c37-2462-4825-befa-1eeab518dfbd"}}
+  ]
+}

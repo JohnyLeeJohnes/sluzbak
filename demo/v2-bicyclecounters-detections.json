@@ -1,0 +1,6 @@
+[
+  {"id": "camea-BC_VI-CE", "value": 0, "value_pedestrians": null, "locations_id": "camea-BC_VI-CEFL", "measurement_count": "149", "measured_from": "{{day+0}}T00:00:00+02:00", "measured_to": "{{now-5}}"},
+  {"id": "camea-BC_VI-FL", "value": 0, "value_pedestrians": null, "locations_id": "camea-BC_VI-CEFL", "measurement_count": "149", "measured_from": "{{day+0}}T00:00:00+02:00", "measured_to": "{{now-5}}"},
+  {"id": "camea-BC_PN-VY", "value": 1412, "value_pedestrians": null, "locations_id": "camea-BC_PN-VYBR", "measurement_count": "149", "measured_from": "{{day+0}}T00:00:00+02:00", "measured_to": "{{now-5}}"},
+  {"id": "camea-BC_PN-BR", "value": 1389, "value_pedestrians": 257, "locations_id": "camea-BC_PN-VYBR", "measurement_count": "149", "measured_from": "{{day+0}}T00:00:00+02:00", "measured_to": "{{now-5}}"}
+]

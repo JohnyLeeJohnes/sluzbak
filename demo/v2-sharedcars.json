@@ -1,0 +1,13 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [14.4466, 50.0781]},
+     "properties": {"id": "cesky-carsharing-7SP9168", "name": "Toyota Toyota Yaris Cross", "res_url": "https://www.anytimecar.cz/", "company": {"name": "Anytime", "web": "https://www.anytimecar.cz/"}, "availability": {"description": "ihned", "id": 1}, "fuel": {"description": "hybrid", "id": 5}, "updated_at": "{{now-2}}"}},
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [14.4391, 50.0739]},
+     "properties": {"id": "car4way-4AB1234", "name": "Škoda Fabia", "res_url": "https://www.car4way.cz/", "company": {"name": "CAR4WAY", "web": "https://www.car4way.cz/"}, "availability": {"description": "ihned", "id": 1}, "fuel": {"description": "benzín", "id": 1}, "updated_at": "{{now-2}}"}},
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [14.4312, 50.0781]},
+     "properties": {"id": "car4way-5AC9876", "name": "Škoda Enyaq", "res_url": "https://www.car4way.cz/", "company": {"name": "CAR4WAY", "web": "https://www.car4way.cz/"}, "availability": {"description": "ihned", "id": 1}, "fuel": {"description": "elektřina", "id": 3}, "updated_at": "{{now-2}}"}},
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [14.4720, 50.0850]},
+     "properties": {"id": "cesky-carsharing-1ADP697", "name": "Toyota Toyota Aygo X", "res_url": "https://www.anytimecar.cz/", "company": {"name": "Anytime", "web": "https://www.anytimecar.cz/"}, "availability": {"description": "ihned", "id": 1}, "fuel": {"description": "hybrid", "id": 5}, "updated_at": "{{now-2}}"}}
+  ]
+}

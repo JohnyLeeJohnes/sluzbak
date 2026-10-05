@@ -1,0 +1,15 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [14.4420, 50.0766]},
+     "properties": {"gtfs_trip_id": "135_1008_260901", "route_type": "bus", "gtfs_route_short_name": "135", "bearing": 80, "delay": 26, "state_position": "at_stop", "vehicle_id": "service-3-6828"}},
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [14.4366, 50.0750]},
+     "properties": {"gtfs_trip_id": "22_1840_260901", "route_type": "tram", "gtfs_route_short_name": "22", "bearing": 265, "delay": 130, "state_position": "on_track", "vehicle_id": "service-0-9412"}},
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [14.4380, 50.0755]},
+     "properties": {"gtfs_trip_id": "991_11452_260202", "route_type": "metro", "gtfs_route_short_name": "A", "bearing": 95, "delay": 0, "state_position": "at_stop", "vehicle_id": "metro-A-3-3"}},
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [14.4320, 50.0738]},
+     "properties": {"gtfs_trip_id": "16_702_260901", "route_type": "tram", "gtfs_route_short_name": "16", "bearing": 110, "delay": 45, "state_position": "on_track", "vehicle_id": "service-0-9188"}},
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [14.4600, 50.0790]},
+     "properties": {"gtfs_trip_id": "11_415_260901", "route_type": "tram", "gtfs_route_short_name": "11", "bearing": 90, "delay": 310, "state_position": "on_track", "vehicle_id": "service-0-8214"}}
+  ]
+}

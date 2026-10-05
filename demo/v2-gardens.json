@@ -1,0 +1,29 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [14.4417, 50.0805]},
+      "properties": {
+        "id": "riegrovy-sady", "name": "Riegrovy sady", "district": "praha-2",
+        "address": {"address_formatted": "Riegrovy sady 28, 12000 Praha, Česko"},
+        "description": "Rozsáhlý park s průhledy na Prahu, Hradčany a Petřín.",
+        "properties": [
+          {"description": "Bruslení", "id": "brusle", "value": "ANO"},
+          {"description": "Otevírací doba", "id": "doba", "value": "Celoročně volný přístup"},
+          {"description": "Dětské hřiště", "id": "hriste", "value": "ANO poblíž zahradní restaurace"}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [14.4199, 50.0644]},
+      "properties": {
+        "id": "vysehrad", "name": "Vyšehrad", "district": "praha-2",
+        "address": {"address_formatted": "K Rotundě 10, 12000 Praha, Česko"},
+        "description": "Opevnění s parky nad Vltavou.",
+        "properties": [{"description": "Otevírací doba", "id": "doba", "value": "Celoročně"}]
+      }
+    }
+  ]
+}

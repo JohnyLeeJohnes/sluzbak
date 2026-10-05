@@ -5,21 +5,47 @@ verze se řídí [sémantickým verzováním](https://semver.org/lang/cs/).
 
 ## [Nevydáno]
 
+Poprvé vyzkoušeno se skutečným klíčem; z toho většina změn níž.
+
 ### Přidáno
 
+- Čtyři nové karty: **Právě jede kolem** (vozidla MHD do 1 km s cílem, směrem a zpožděním), **Výluky
+  a mimořádnosti** (co PID hlásí v celé síti), **Sdílená auta** (nejbližší volná auta) a **Cyklosčítač**
+  (kolik kol dnes projelo kolem nejbližšího sčítače).
+- Karta V okolí ukazuje navíc nejbližší nemocnici, hřiště a zahradu; podrobnosti místa jsou v bublině.
+- Parkování: vzdálenost k nejbližšímu parkovacímu automatu.
+- V záhlaví přehledu je městská část, ve které místo leží.
+- Přehled má dvě záložky, Doprava a Okolí. Stahuje se jen ta otevřená, takže přidané karty nezdržují.
+- Hledání adresy: nalezená adresa se do pole vyplní sama, kliknutí na jinou v seznamu ji přepíše i se
+  souřadnicemi. V seznamu jde vybírat šipkami přímo z pole s adresou.
+- Když se spojení s Golemiem nepovede, dotaz se jednou zopakuje a karta to za půl minuty zkusí znovu sama.
+- Přepínač `-Page`, který otevře danou záložku (k `-Screenshot`).
+- Test klávesnice v nastavení (`tests/keys.ps1`).
 - Licence MIT.
-- Když se spojení s Golemiem nepovede, dotaz se jednou zopakuje.
 
 ### Změněno
 
+- Přehled je hustší a menší: obě záložky se vejdou do výchozího okna bez posouvání.
+- Místo se jmenuje krátce („Korunní 586/2, Vinohrady“), ne celým řetězcem z vyhledávače.
 - Svoz odpadu: druhy odpadu jsou seřazené podle toho, co se sveze nejdřív.
-- Ovzduší: měření starší než 6 hodin se neukáže jako aktuální; karta místo něj napíše, z kdy je poslední.
+- Ovzduší: čerstvé hodnoty se berou z historie měření, protože seznam stanic vrací měsíce starý stav.
+  Měření starší než 6 hodin se neukáže jako aktuální; karta místo něj napíše, z kdy je poslední.
+- Mikroklima: bere se nejbližší senzor, který v posledních dvou hodinách něco naměřil, ne nejbližší vůbec.
+  Když neměří žádný (od dubna 2026 všechny), karta to řekne rovnou.
 - Velkoobjemové kontejnery se neukazují, když k nim klíč nemá přístup (dřív tam byla chybová hláška).
+- Vzdálenost přesně na kilometry se píše „1 km“, ne „1,0 km“.
 
 ### Opraveno
 
 - Hledání adresy: po kliknutí na **Najít** přestala v okně fungovat klávesnice a Enter v poli s adresou
   hledal pořád dokola. Teď první Enter hledá a druhý nalezenou adresu uloží.
+- Karta, které Golemio napoprvé neodpovědělo včas, zůstala s chybou až do dalšího obnovení za deset minut.
+
+### Známé problémy
+
+- Běžný klíč z registrace nemá přístup k velkoobjemovým kontejnerům, sdíleným kolům, dopravním omezením,
+  intenzitě dopravy, sčítačům chodců, hlášení závad ani k energetice. Kromě kontejnerů tyhle sady
+  v aplikaci nejsou.
 
 ## [0.1.0] - 2026-10-05
 

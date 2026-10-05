@@ -2,9 +2,10 @@
 # Žádné okno: funkce běží na pozadí (GolemWatch.ps1) i v testech (tests/unit.ps1).
 # Funkce Get-* vracejí objekty připravené k zobrazení, texty už jsou naformátované.
 #
-# $context = @{ Token = '...'; Demo = $null; Limiter = $null; Options = @{} }
+# $context = @{ Token = '...'; Demo = $null; Limiter = $null; Cache = $null; Options = @{} }
 # S Demo = cesta ke složce se místo sítě čtou ukázkové soubory (viz Read-Demo).
-# Limiter je fronta pro hlídání limitu API (viz Wait-RateLimit), Options volby uživatele (viz $defaultOptions).
+# Limiter je fronta pro hlídání limitu API (viz Wait-RateLimit), Cache společná paměť číselníků (viz Get-Cached),
+# Options volby uživatele (viz $defaultOptions).
 
 Add-Type -AssemblyName System.Net.Http, System.Web.Extensions
 
@@ -94,6 +95,7 @@ function Get-HttpClient {
 
 function Invoke-Http([string]$uri, [string]$token, [string]$service) {
     # Druhý pokus spraví spojení, které server mezitím zavřel, i chvilkový výpadek. Čte se jen (GET), takže neuškodí.
+    # Pomáhá i u dotazů, na které Golemio poprvé odpovídá přes půl minuty: napodruhé už bývá odpověď hned.
     foreach ($attempt in 1, 2) {
         $request = New-Object System.Net.Http.HttpRequestMessage ([Net.Http.HttpMethod]::Get), $uri
         if ($token) { $null = $request.Headers.TryAddWithoutValidation('X-Access-Token', $token.Trim()) }
@@ -102,14 +104,11 @@ function Invoke-Http([string]$uri, [string]$token, [string]$service) {
             $bytes = $response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
             break
         } catch {
-            # Po vypršení času se znovu nezkouší, čekalo by se dvakrát tak dlouho.
+            if ($attempt -eq 1) { Start-Sleep -Milliseconds 400; continue }
             if ($_.Exception.GetBaseException() -is [OperationCanceledException]) {
                 throw (New-ApiError 'Network' "Služba $service neodpověděla včas. Zkus to za chvíli.")
             }
-            if ($attempt -eq 2) {
-                throw (New-ApiError 'Network' "Nepodařilo se spojit se službou $service. Zkontroluj připojení k internetu.")
-            }
-            Start-Sleep -Milliseconds 400
+            throw (New-ApiError 'Network' "Nepodařilo se spojit se službou $service. Zkontroluj připojení k internetu.")
         }
     }
     if (-not $response.IsSuccessStatusCode) { throw (ConvertTo-ApiError ([int]$response.StatusCode)) }
@@ -163,12 +162,30 @@ function Invoke-Api($context, [string]$path, $query = @{}) {
     Invoke-Http ('https://api.golemio.cz' + $path + (Format-Query $query)) $context.Token 'Golemio'
 }
 
-# Některé číselníky se za běhu nemění; stačí je stáhnout jednou na vlákno.
-function Get-Cached($context, [string]$path) {
-    if (-not $global:GolemWatchCache) { $global:GolemWatchCache = @{} }
+# Číselníky a popisy spojů se za běhu nemění; stačí je stáhnout jednou. Okno dává všem úlohám společnou
+# paměť ($context.Cache, synchronizovaná tabulka), jinak by si každé vlákno stahovalo totéž znovu.
+function Get-Cached($context, [string]$path, $query = @{}) {
+    $cache = $context.Cache
+    if ($null -eq $cache) {
+        if (-not $global:GolemWatchCache) { $global:GolemWatchCache = @{} }
+        $cache = $global:GolemWatchCache
+    }
     $key = "$($context.Demo)|$path"
-    if (-not $global:GolemWatchCache.ContainsKey($key)) { $global:GolemWatchCache[$key] = Invoke-Api $context $path }
-    $global:GolemWatchCache[$key]
+    if (-not $cache.ContainsKey($key)) {
+        $value = Invoke-Api $context $path $query
+        # Popisy spojů přibývají celý den; občasné vymazání udrží paměť malou.
+        if ($cache.Count -ge 500) { $cache.Clear() }
+        $cache[$key] = $value
+    }
+    $cache[$key]
+}
+
+function Format-Utc([DateTime]$time) { $time.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", $invariant) }
+
+# Světová strana, kam míří azimut ve stupních: 0 = S, 90 = V.
+function Format-Compass($bearing) {
+    if ($null -eq $bearing -or "$bearing" -eq '') { return '' }
+    ('S', 'SV', 'V', 'JV', 'J', 'JZ', 'Z', 'SZ')[[int][Math]::Round((([double]$bearing % 360) + 360) % 360 / 45) % 8]
 }
 
 # ---- Poloha a čas ----
@@ -182,7 +199,7 @@ function Get-Distance([double]$latitude1, [double]$longitude1, [double]$latitude
 
 function Format-Distance([double]$meters) {
     if ($meters -lt 995) { '{0} m' -f ([int]([Math]::Round($meters / 10) * 10)) }
-    else { [string]::Format($cs, '{0:0.0} km', $meters / 1000) }
+    else { [string]::Format($cs, '{0:0.#} km', $meters / 1000) }
 }
 
 # "šířka,délka,šířka,délka" levého horního a pravého dolního rohu čtverce, jehož strany jsou $radius metrů od středu.
@@ -335,27 +352,45 @@ function Format-Formula([string]$code) {
 $airFreshHours = 6
 
 function Get-Air($context, [double]$latitude, [double]$longitude) {
-    $stations = Invoke-Api $context '/v2/airqualitystations' ([ordered]@{ latlng = Format-LatLng $latitude $longitude; limit = 5 })
+    $stations = Invoke-Api $context '/v2/airqualitystations' ([ordered]@{ latlng = Format-LatLng $latitude $longitude; limit = 10 })
     $nearest = @(Get-Features $stations $latitude $longitude | Sort-Object { $_.Distance })
     if (-not $nearest) { return [pscustomobject]@{ Meta = ''; Empty = 'Golemio nevrátilo žádnou měřicí stanici.' } }
 
-    # Nejbližší stanice nemusí zrovna měřit; pak se vezme nejbližší, která data má.
-    $measuring = @($nearest | Where-Object { @($_.Properties.measurement.components | Where-Object { $null -ne $_.averaged_time.value }).Count })
+    # Seznam stanic nese poslední stav, který k němu Golemio dostalo, a ten bývá i měsíce starý. Čerstvá měření
+    # jsou v historii: jeden dotaz na všechny stanice, ať se nemusí zkoušet jedna po druhé.
+    $newest = @{}
+    try {
+        $history = Invoke-Api $context '/v2/airqualitystations/history' ([ordered]@{ from = Format-Utc ([DateTime]::UtcNow.AddHours(-$airFreshHours)) })
+        foreach ($row in @($history)) {
+            $time = if ($row) { ConvertTo-PragueTime $row.updated_at }
+            if ($time -and $row.id -and (-not $newest[[string]$row.id] -or $time -gt $newest[[string]$row.id].Time)) {
+                $newest[[string]$row.id] = @{ Time = $time; Measurement = $row.measurement }
+            }
+        }
+    } catch { }
+
     $now = Get-PragueNow
-    # Když Golemio nová data nedostává, vrací dál poslední stav. Ten se jako aktuální ukázat nesmí.
-    $fresh = @($measuring | Where-Object {
-        $time = ConvertTo-PragueTime $_.Properties.updated_at
-        -not $time -or ($now - $time).TotalHours -le $airFreshHours
+    $readings = @(foreach ($candidate in $nearest) {
+        $reading = $newest[[string]$candidate.Properties.id]
+        if (-not $reading) { $reading = @{ Time = ConvertTo-PragueTime $candidate.Properties.updated_at; Measurement = $candidate.Properties.measurement } }
+        # Stanice, která zrovna nic neměří, se přeskočí; vezme se nejbližší, která data má.
+        if (@($reading.Measurement.components | Where-Object { $null -ne $_.averaged_time.value }).Count) {
+            @{ Station = $candidate; Time = $reading.Time; Measurement = $reading.Measurement }
+        }
     })
-    if ($measuring -and -not $fresh) {
-        $last = @($measuring | ForEach-Object { ConvertTo-PragueTime $_.Properties.updated_at } | Sort-Object -Descending)[0]
+    if (-not $readings) { return [pscustomobject]@{ Meta = ''; Empty = 'Žádná stanice v okolí teď neměří.' } }
+
+    # Staré měření se jako aktuální ukázat nesmí. Chybí-li čas úplně, nedá se stáří posoudit a měření se ukáže.
+    $reading = @($readings | Where-Object { -not $_.Time -or ($now - $_.Time).TotalHours -le $airFreshHours })[0]
+    if (-not $reading) {
+        $last = @($readings | ForEach-Object { $_.Time } | Sort-Object -Descending)[0]
         return [pscustomobject]@{
             Meta = ''
             Empty = "Golemio má poslední měření ovzduší z $($last.ToString('d. M.', $cs)) v $(Format-Clock $last). Novější teď neposkytuje."
         }
     }
-    $station = if ($fresh) { $fresh[0] } else { $nearest[0] }
-    $measurement = $station.Properties.measurement
+    $station = $reading.Station
+    $measurement = $reading.Measurement
 
     # Číselníky jsou jen na popisky a barvy; bez nich se ukážou holé kódy.
     $indexTypes = @(); $componentTypes = @()
@@ -380,10 +415,12 @@ function Get-Air($context, [double]$latitude, [double]$longitude) {
             Description = [string]$type.description_cs
             Value = ((Format-Number $_.averaged_time.value), [string]$type.unit | Where-Object { $_ }) -join ' '
             Period = if ($hours) { "průměr za $hours h" } else { '' }
+            # Totéž na jeden řádek karty.
+            Detail = ([string]$type.description_cs, $(if ($hours) { "$hours h" }) | Where-Object { $_ }) -join ' · '
         }
     } | Sort-Object Code, Hours)
 
-    $updated = ConvertTo-PragueTime $station.Properties.updated_at
+    $updated = $reading.Time
     [pscustomobject]@{
         Meta = "$($station.Properties.name) · $(Format-Distance $station.Distance)"
         Index = if ($description) { $description.Substring(0, 1).ToUpper($cs) + $description.Substring(1) } elseif ($code) { "Index $code" } else { 'Index není k dispozici' }
@@ -397,36 +434,64 @@ function Get-Air($context, [double]$latitude, [double]$longitude) {
 
 # ---- Mikroklima ----
 
+# Veličiny v pořadí, v jakém je karta ukazuje. Kód z API má za názvem výšku čidla v cm (air_temp200).
+$microclimateMeasures = [ordered]@{
+    air_temp = 'Teplota'; air_hum = 'Vlhkost'; pressure = 'Tlak'; wind_speed = 'Vítr'
+    wind_impact = 'Nárazy větru'; wind_dir = 'Směr větru'; precip = 'Srážky'; sun_irr = 'Osvit'
+}
+# Senzory hlásí po deseti minutách; dvě hodiny zpět stačí a odpověď za všechny senzory zůstane malá.
+$microclimateHours = 2
+
+function Format-Measure([string]$base, $value, [string]$unit) {
+    if ($base -eq 'wind_dir') { return Format-Compass $value }
+    # Tlak chodí v pascalech, zvyk je v hektopascalech.
+    if ($unit -eq 'Pa') { return (Format-Number ([double]$value / 100) '0') + ' hPa' }
+    ((Format-Number $value), $unit | Where-Object { $_ }) -join ' '
+}
+
 function Get-Microclimate($context, [double]$latitude, [double]$longitude) {
     # Specifikace tu popisuje jeden objekt, i když jde o seznam; @() srovná obojí.
-    $points = @(Get-Cached $context '/v2/microclimate/points') | Where-Object { $_ -and $null -ne $_.lat -and $null -ne $_.lng -and $null -ne $_.point_id }
-    $point = @($points | Sort-Object { Get-Distance $latitude $longitude ([double]$_.lat) ([double]$_.lng) })[0]
-    if (-not $point) { return [pscustomobject]@{ Meta = ''; Empty = 'Golemio nevrátilo žádný senzor mikroklimatu.' } }
+    $points = @(@(Get-Cached $context '/v2/microclimate/points') | Where-Object { $_ -and $null -ne $_.lat -and $null -ne $_.lng -and $null -ne $_.point_id })
+    if (-not $points) { return [pscustomobject]@{ Meta = ''; Empty = 'Golemio nevrátilo žádný senzor mikroklimatu.' } }
 
-    $measurements = @(Invoke-Api $context '/v2/microclimate/measurements' ([ordered]@{
-        pointId = $point.point_id
-        from = [DateTime]::UtcNow.AddHours(-3).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", $invariant)
-    }))
+    # Jeden dotaz na všechny senzory: nejbližší často mlčí a zkoušet je po jednom by stálo dotaz za každý.
+    $measured = @{}
+    foreach ($row in @(Invoke-Api $context '/v2/microclimate/measurements' ([ordered]@{ from = Format-Utc ([DateTime]::UtcNow.AddHours(-$microclimateHours)) }))) {
+        if (-not $row -or -not $row.measure -or $null -eq $row.value) { continue }
+        $key = [string]$row.point_id
+        if (-not $measured.ContainsKey($key)) { $measured[$key] = New-Object System.Collections.ArrayList }
+        $null = $measured[$key].Add($row)
+    }
+    $point = @($points | Where-Object { $measured.ContainsKey([string]$_.point_id) } |
+        Sort-Object { Get-Distance $latitude $longitude ([double]$_.lat) ([double]$_.lng) })[0]
+    if (-not $point) { return [pscustomobject]@{ Meta = ''; Empty = 'Golemio teď nemá čerstvá data z žádného senzoru mikroklimatu.' } }
 
     $latest = $null
-    $values = @($measurements | Where-Object { $_ -and $_.measure -and $null -ne $_.value } | Group-Object { [string]$_.measure } | ForEach-Object {
-        $last = @($_.Group | Sort-Object { ConvertTo-PragueTime $_.measured_at } -Descending)[0]
+    $order = @($microclimateMeasures.Keys)
+    # Stejná veličina z více výšek se ukáže jednou, z té vyšší (dva metry jsou běžná výška měření).
+    $values = @($measured[[string]$point.point_id] | Group-Object { ([string]$_.measure) -replace '\d+$' } | ForEach-Object {
+        $base = $_.Name
+        $height = @($_.Group | ForEach-Object { if ([string]$_.measure -match '(\d+)$') { [int]$Matches[1] } else { 0 } } | Sort-Object -Descending)[0]
+        $last = @($_.Group | Where-Object { [string]$_.measure -eq $(if ($height) { "$base$height" } else { $base }) } |
+            Sort-Object { ConvertTo-PragueTime $_.measured_at } -Descending)[0]
         $time = ConvertTo-PragueTime $last.measured_at
         if ($time -and (-not $latest -or $time -gt $latest)) { $latest = $time }
         $measure = @($point.measures | Where-Object { $_.measure -eq $last.measure })[0]
         [pscustomobject]@{
-            Name = if ($measure.measure_cz) { [string]$measure.measure_cz } else { [string]$last.measure }
-            Value = ((Format-Number $last.value), [string]$last.unit | Where-Object { $_ }) -join ' '
+            # Vlastní krátké jméno, jinak české jméno z číselníku senzoru, jinak aspoň kód.
+            Name = @($microclimateMeasures[$base], $measure.measure_cz, [string]$last.measure | Where-Object { $_ })[0]
+            Value = Format-Measure $base $last.value ([string]$last.unit)
+            Order = if ($base -in $order) { [array]::IndexOf($order, $base) } else { $order.Count }
         }
-    } | Sort-Object Name)
+    } | Sort-Object Order, Name)
 
-    # Bod se podle specifikace jmenuje point_named, jinde v API point_name.
+    # Bod se podle specifikace jmenuje point_named, naživo point_name.
     $name = @($point.point_named, $point.point_name, $point.location | Where-Object { $_ })[0]
     [pscustomobject]@{
         Meta = "$name · $(Format-Distance (Get-Distance $latitude $longitude ([double]$point.lat) ([double]$point.lng)))"
         Values = $values
         Updated = if ($latest) { 'měřeno v ' + (Format-Clock $latest) } else { '' }
-        Empty = if ($values) { '' } else { 'Nejbližší senzor za poslední tři hodiny nic nenaměřil.' }
+        Empty = ''
     }
 }
 
@@ -468,8 +533,17 @@ function Get-Parking($context, [double]$latitude, [double]$longitude) {
         } catch { }
     }
 
+    # Parkovací automat je jen doplněk; když dotaz selže nebo žádný poblíž není, řádek se neukáže.
+    $machine = ''
+    try {
+        $machines = Invoke-Api $context '/v3/parking-machines' ([ordered]@{ boundingBox = Get-BoundingBox $latitude $longitude $range; limit = 200 })
+        $closest = @(Get-Features $machines $latitude $longitude | Where-Object { $_.Distance -le $range } | Sort-Object { $_.Distance })[0]
+        if ($closest) { $machine = 'Nejbližší parkovací automat ' + (Format-Distance $closest.Distance) }
+    } catch { }
+
     [pscustomobject]@{
         Meta = 'do ' + (Format-Distance $range)
+        Machine = $machine
         Items = @($places | ForEach-Object {
             $p = $_.Properties
             $measured = $occupancy[[string]$p.id]
@@ -481,10 +555,11 @@ function Get-Parking($context, [double]$latitude, [double]$longitude) {
                 Name = @($p.name, $p.address.address_formatted, 'Parkoviště' | Where-Object { $_ })[0]
                 Kind = [string]$kind
                 Distance = Format-Distance $_.Distance
-                Detail = ([string]$kind, (Format-Distance $_.Distance) | Where-Object { $_ }) -join ' · '
+                # Vzdálenost první: když se řádek do karty nevejde celý, ořízne se konec.
+                Detail = ((Format-Distance $_.Distance), [string]$kind | Where-Object { $_ }) -join ' · '
                 # Bez měření obsazenosti se místo volných míst ukáže aspoň kapacita (šedě, viz FreeColor).
                 Free = if ($null -ne $free) { "$free" } elseif ($capacity) { "$capacity" } else { '' }
-                Capacity = if ($null -ne $free -and $capacity) { "volných z $capacity" } elseif ($null -ne $free) { 'volných' } elseif ($capacity) { 'míst celkem' } else { '' }
+                Capacity = if ($null -ne $free -and $capacity) { "volných z $capacity" } elseif ($null -ne $free) { 'volných' } elseif ($capacity) { 'míst' } else { '' }
                 FreeColor = if ($null -eq $free) { '#8C93A8' } elseif ($free -eq 0) { '#FF8A80' } else { '#7BD88F' }
             }
         })
@@ -519,7 +594,16 @@ function Find-Stops($context, [double]$latitude, [double]$longitude) {
         }
         if (@($page.features).Count -lt $pageSize) { break }
     }
+    # Celý seznam zastávek zabere desítky megabajtů; bez úklidu by si je proces držel ještě dlouho.
+    $page = $null
+    [GC]::Collect()
     @($near | Sort-Object Meters | Select-Object -First 10)
+}
+
+function Get-RouteColor($type, [string]$route) {
+    if ($type -eq 1 -and $metroColors[$route]) { return $metroColors[$route] }
+    if ($null -ne $type -and $routeColors[[int]$type]) { return $routeColors[[int]$type] }
+    '#5B6170'
 }
 
 function Get-Transit($context, [double]$latitude, [double]$longitude, $stops) {
@@ -551,7 +635,7 @@ function Get-Transit($context, [double]$latitude, [double]$longitude, $stops) {
         $platform = @($_.stop.platform_code, $stop.Platform | Where-Object { $_ })[0]
         $route = [string]$_.route.short_name
         $type = ConvertTo-Int $_.route.type
-        $color = if ($type -eq 1 -and $metroColors[$route]) { $metroColors[$route] } elseif ($null -ne $type -and $routeColors[[int]$type]) { $routeColors[[int]$type] } else { '#5B6170' }
+        $color = Get-RouteColor $type $route
         $canceled = [bool]$_.trip.is_canceled
 
         [pscustomobject]@{
@@ -579,15 +663,187 @@ function Get-Transit($context, [double]$latitude, [double]$longitude, $stops) {
     }
 }
 
+# ---- Vozidla MHD v okolí ----
+
+# Druh dopravy tu chodí slovem; barvy jsou stejné jako u odjezdů (číselné typy GTFS).
+$routeTypes = @{ tram = 0; metro = 1; train = 2; bus = 3; ferry = 4; funicular = 7; trolleybus = 11 }
+$vehicleRange = 1000
+
+function Get-Vehicles($context, [double]$latitude, [double]$longitude) {
+    $positions = Invoke-Api $context '/v2/public/vehiclepositions' ([ordered]@{ boundingBox = Get-BoundingBox $latitude $longitude $vehicleRange })
+    $near = @(Get-Features $positions $latitude $longitude | Where-Object { $_.Distance -le $vehicleRange } | Sort-Object { $_.Distance })
+    if (-not $near) { return [pscustomobject]@{ Meta = ''; Empty = "Do $(Format-Distance $vehicleRange) teď žádný spoj MHD nejede." } }
+
+    [pscustomobject]@{
+        Meta = "$($near.Count) do $(Format-Distance $vehicleRange)"
+        Items = @($near | Select-Object -First 8 | ForEach-Object {
+            $vehicle = $_
+            $p = $vehicle.Properties
+            $route = [string]$p.gtfs_route_short_name
+            # Kam spoj jede, v polohách není. Dotáže se jednou na každý spoj a pak už se bere z paměti.
+            $headsign = ''
+            if ($p.gtfs_trip_id) {
+                try { $headsign = [string](Get-Cached $context "/v2/public/gtfs/trips/$($p.gtfs_trip_id)" ([ordered]@{ 'scopes[]' = 'info' })).trip_headsign } catch { }
+            }
+            $delay = if ($null -ne $p.delay) { [int][Math]::Round([double]$p.delay / 60) } else { 0 }
+            $color = Get-RouteColor ($routeTypes[[string]$p.route_type]) $route
+            [pscustomobject]@{
+                Route = $route
+                Color = $color
+                RouteTextColor = if ($color -eq $metroColors.B) { '#1F1405' } else { '#FFFFFF' }
+                Headsign = $headsign
+                State = if ($p.state_position -eq 'at_stop') { 'v zastávce' } else { (('směr ' + (Format-Compass $p.bearing)) -replace '^směr $') }
+                Delay = if ($delay -ge 1) { "+$delay min" } else { '' }
+                Distance = Format-Distance $vehicle.Distance
+            }
+        })
+        Empty = ''
+    }
+}
+
+# ---- Mimořádnosti PID ----
+
+function Get-Alerts($context, [double]$latitude, [double]$longitude) {
+    $order = @{ high = 0; normal = 1; low = 2 }
+    # Stejný text chodí zvlášť pro každou dotčenou zastávku; v kartě je jednou a zastávky se sečtou.
+    $all = @(@(Invoke-Api $context '/v3/pid/infotexts') | Where-Object { $_ -and $_.text } | Group-Object { [string]$_.text } | ForEach-Object {
+        $rank = @($_.Group | ForEach-Object { if ($order.ContainsKey([string]$_.priority)) { $order[[string]$_.priority] } else { 1 } } | Sort-Object)[0]
+        @{
+            Text = $_.Name
+            Rank = $rank
+            Stops = @($_.Group | ForEach-Object { $_.related_stops } | ForEach-Object { [string]$_.name } | Where-Object { $_ } | Select-Object -Unique)
+            Until = @($_.Group | ForEach-Object { ConvertTo-PragueTime $_.valid_to } | Where-Object { $_ } | Sort-Object -Descending)[0]
+        }
+    } | Sort-Object { $_.Rank }, { $_.Until })
+    if (-not $all) { return [pscustomobject]@{ Meta = ''; Empty = 'PID teď žádnou mimořádnost nehlásí.' } }
+
+    $shown = 4
+    $today = (Get-PragueNow).Date
+    [pscustomobject]@{
+        Meta = "$($all.Count) v celé síti"
+        Items = @($all | Select-Object -First $shown | ForEach-Object {
+            [pscustomobject]@{
+                Text = $_.Text
+                Stops = (@($_.Stops | Select-Object -First 3) -join ', ') + $(if ($_.Stops.Count -gt 3) { ' a další' } else { '' })
+                Until = if (-not $_.Until) { '' } elseif ($_.Until.Date -eq $today) { 'dnes končí' } else { 'do ' + (Format-Day $_.Until.Date) }
+                Color = if ($_.Rank -eq 0) { '#FF8A80' } else { '#E9A45B' }
+            }
+        })
+        More = if ($all.Count -gt $shown) { "a $($all.Count - $shown) další" } else { '' }
+        Empty = ''
+    }
+}
+
+# ---- Sdílená auta ----
+
+$carRange = 1500
+
+function Get-Cars($context, [double]$latitude, [double]$longitude) {
+    $cars = Invoke-Api $context '/v2/sharedcars' ([ordered]@{ latlng = Format-LatLng $latitude $longitude; range = $carRange; limit = 50 })
+    $near = @(Get-Features $cars $latitude $longitude | Where-Object { $_.Distance -le $carRange } | Sort-Object { $_.Distance })
+    if (-not $near) { return [pscustomobject]@{ Meta = ''; Empty = "Do $(Format-Distance $carRange) teď žádné sdílené auto nestojí." } }
+
+    [pscustomobject]@{
+        Meta = "$($near.Count) do $(Format-Distance $carRange)"
+        Items = @($near | Select-Object -First 5 | ForEach-Object {
+            $p = $_.Properties
+            [pscustomobject]@{
+                # Značka bývá v názvu dvakrát ("Toyota Toyota Aygo X").
+                Name = ([string]$p.name) -replace '^(\S+) \1 ', '$1 '
+                Detail = ([string]$p.company.name, [string]$p.fuel.description, [string]$p.availability.description | Where-Object { $_ }) -join ' · '
+                Distance = Format-Distance $_.Distance
+            }
+        })
+        Empty = ''
+    }
+}
+
+# ---- Cyklosčítače ----
+
+function Get-Cycling($context, [double]$latitude, [double]$longitude) {
+    $counters = Invoke-Api $context '/v2/bicyclecounters' ([ordered]@{ latlng = Format-LatLng $latitude $longitude; limit = 3 })
+    $near = @(Get-Features $counters $latitude $longitude | Sort-Object { $_.Distance } | Select-Object -First 3)
+    if (-not $near) { return [pscustomobject]@{ Meta = ''; Empty = 'Golemio nevrátilo žádný cyklosčítač.' } }
+
+    # Součty od půlnoci za všechny směry nejbližších sčítačů jedním dotazem (je pomalý, i několik sekund).
+    $now = Get-PragueNow
+    $midnight = [DateTimeOffset]::new($now.Date, $now.Offset).UtcDateTime
+    $ids = @($near | ForEach-Object { $_.Properties.directions } | ForEach-Object { [string]$_.id } | Where-Object { $_ })
+    $sums = @{}
+    foreach ($row in @(Invoke-Api $context '/v2/bicyclecounters/detections' ([ordered]@{ 'id[]' = $ids; from = Format-Utc $midnight; aggregate = $true }))) {
+        if ($row -and $row.id) { $sums[[string]$row.id] = $row }
+    }
+
+    $counted = @($near | ForEach-Object {
+        $directions = @($_.Properties.directions | Where-Object { $_ -and $_.id } | ForEach-Object {
+            $sum = $sums[[string]$_.id]
+            @{ Name = [string]$_.name; Bikes = [int](ConvertTo-Int $sum.value); Walkers = ConvertTo-Int $sum.value_pedestrians }
+        })
+        @{ Counter = $_; Directions = $directions; Total = ($directions | ForEach-Object { $_.Bikes } | Measure-Object -Sum).Sum }
+    })
+    # Sčítač, který nefunguje, hlásí celý den nulu; vezme se nejbližší, který dnes něco napočítal.
+    $picked = @($counted | Where-Object { $_.Total -gt 0 })[0]
+    if (-not $picked) { return [pscustomobject]@{ Meta = ''; Empty = 'Nejbližší cyklosčítače dnes zatím žádný průjezd nezapsaly.' } }
+
+    $p = $picked.Counter.Properties
+    [pscustomobject]@{
+        Meta = "$($p.name) · $(Format-Distance $picked.Counter.Distance)"
+        Total = Format-Number $picked.Total '#,0'
+        Caption = 'kol od půlnoci' + $(if ($p.route) { " · trasa $($p.route)" } else { '' })
+        Items = @($picked.Directions | ForEach-Object {
+            [pscustomobject]@{
+                Name = 'směr ' + $_.Name
+                Value = (Format-Number $_.Bikes '#,0') + $(if ($_.Walkers) { " · pěších $(Format-Number $_.Walkers '#,0')" } else { '' })
+            }
+        })
+        Empty = ''
+    }
+}
+
+# ---- Městská část ----
+
+# Leží bod uvnitř obrysu? Obrys je seznam vrcholů [délka, šířka]; počítá se, kolikrát ho protne polopřímka z bodu.
+function Test-InRing($ring, [double]$latitude, [double]$longitude) {
+    $inside = $false
+    $points = @($ring)
+    for ($i = 0; $i -lt $points.Count; $i++) {
+        $a = $points[$i]; $b = $points[($i + 1) % $points.Count]
+        $x1 = [double]$a[0]; $y1 = [double]$a[1]; $x2 = [double]$b[0]; $y2 = [double]$b[1]
+        if (($y1 -gt $latitude) -ne ($y2 -gt $latitude) -and $longitude -lt ($x2 - $x1) * ($latitude - $y1) / ($y2 - $y1) + $x1) { $inside = -not $inside }
+    }
+    $inside
+}
+
+# Jméno městské části, ve které místo leží; nic, když je mimo Prahu.
+function Get-District($context, [double]$latitude, [double]$longitude) {
+    $districts = Invoke-Api $context '/v2/citydistricts' ([ordered]@{ latlng = Format-LatLng $latitude $longitude; limit = 4 })
+    foreach ($feature in @($districts.features)) {
+        if (-not $feature -or -not $feature.geometry) { continue }
+        # Polygon má vnější obrys v coordinates[0], MultiPolygon má takových částí víc.
+        $polygons = New-Object System.Collections.ArrayList
+        if ($feature.geometry.type -eq 'MultiPolygon') { foreach ($polygon in $feature.geometry.coordinates) { $null = $polygons.Add($polygon) } }
+        else { $null = $polygons.Add($feature.geometry.coordinates) }
+        foreach ($polygon in $polygons) {
+            if (Test-InRing ($polygon[0]) $latitude $longitude) { return [string]$feature.properties.name }
+        }
+    }
+    ''
+}
+
 # ---- V okolí ----
 
 # Od každého druhu místa se ukáže to nejbližší. Range je v metrech: sběrných dvorů je málo, lékáren hodně.
+# Group a Types se navíc hlídají i tady, protože zdravotnická zařízení jsou v jedné sadě všechna dohromady.
+# Zahrad je v celé Praze pár desítek, proto se hledají bez omezení vzdálenosti.
 $nearbyKinds = @(
     @{ Label = 'Lékárna'; Path = '/v2/medicalinstitutions'; Group = 'pharmacies'; Range = 3000 }
+    @{ Label = 'Nemocnice'; Path = '/v2/medicalinstitutions'; Group = 'health_care'; Types = 'Nemocnice', 'Fakultní nemocnice'; Range = 10000; Limit = 300 }
     @{ Label = 'Knihovna'; Path = '/v2/municipallibraries'; Range = 5000 }
     @{ Label = 'Úřad'; Path = '/v2/municipalauthorities'; Range = 5000 }
     @{ Label = 'Městská policie'; Path = '/v2/municipalpolicestations'; Range = 5000 }
     @{ Label = 'Sběrný dvůr'; Path = '/v2/wastecollectionyards'; Range = 10000 }
+    @{ Label = 'Hřiště'; Path = '/v2/playgrounds'; Range = 5000 }
+    @{ Label = 'Zahrada'; Path = '/v2/gardens' }
 )
 
 # "09:00" -> 540 minut od půlnoci; nic, když to není čas.
@@ -642,30 +898,44 @@ function Get-Nearby($context, [double]$latitude, [double]$longitude) {
     $now = Get-PragueNow
     $failure = $null
     $places = @(foreach ($kind in $nearbyKinds) {
-        $query = [ordered]@{ latlng = Format-LatLng $latitude $longitude; range = $kind.Range; group = $kind.Group; limit = 3 }
+        $query = [ordered]@{
+            latlng = Format-LatLng $latitude $longitude; range = $kind.Range; group = $kind.Group
+            limit = if ($kind.Limit) { $kind.Limit } else { 3 }
+        }
         # Každý druh je samostatný dotaz; když jeden selže, ostatní se ukážou i tak.
         try { $found = Invoke-Api $context $kind.Path $query }
         catch {
             if (-not $failure) { $failure = $_ }
             continue
         }
-        $nearest = @(Get-Features $found $latitude $longitude | Sort-Object { $_.Distance })[0]
+        $nearest = @(Get-Features $found $latitude $longitude | Where-Object {
+            (-not $kind.Group -or -not $_.Properties.type.group -or $_.Properties.type.group -eq $kind.Group) -and
+            (-not $kind.Types -or [string]$_.Properties.type.description -in $kind.Types)
+        } | Sort-Object { $_.Distance })[0]
         if (-not $nearest) { continue }
 
         $p = $nearest.Properties
         # Úřady mají jen celou adresu "ulice, PSČ město, země"; do karty stačí ulice.
         $street = [string]@($p.address.street_address, ([string]$p.address.address_formatted).Split(',')[0] | Where-Object { $_ })[0]
         $status = Get-OpenStatus $p.opening_hours $now
+        # Služebny městské policie jméno nemají, tak je zastoupí adresa.
+        $name = [string]@($p.name, $street, $kind.Label | Where-Object { $_ })[0]
+        $address = if ($p.name) { $street } else { [string]$p.cadastral_area }
+        # Volný text navíc: otevírací doba sběrného dvora a zahrady, vybavení hřiště.
+        $hours = [string]@($p.operating_hours, (@($p.properties | Where-Object { $_.id -eq 'doba' })[0].value) | Where-Object { $_ })[0]
+        if (-not $hours -and $kind.Path -eq '/v2/playgrounds') {
+            $hours = @($p.properties | ForEach-Object { [string]$_.description } | Where-Object { $_ }) -join ', '
+        }
         [pscustomobject]@{
             Kind = $kind.Label
-            # Služebny městské policie jméno nemají, tak je zastoupí adresa.
-            Name = [string]@($p.name, $street, $kind.Label | Where-Object { $_ })[0]
-            Address = if ($p.name) { $street } else { [string]$p.cadastral_area }
+            Name = $name
+            Address = $address
             Distance = Format-Distance $nearest.Distance
             Status = if ($status) { $status.Text } else { '' }
             StatusColor = if ($status -and $status.Open) { '#7BD88F' } else { '#8C93A8' }
-            # Sběrné dvory mají otevírací dobu jen jako volný text.
-            Hours = [string]$p.operating_hours
+            Hours = $hours
+            # V kartě je místo na jeden řádek; zbytek se ukáže po najetí myší.
+            Detail = ($name, $address, $hours | Where-Object { $_ }) -join "`n"
         }
     })
     # Když selže úplně všechno, je to chyba klíče nebo sítě a má být vidět.
@@ -690,10 +960,26 @@ function Test-Token($context) {
 function Find-Address($context, [string]$text) {
     $found = if ($context.Demo) { Read-Demo $context.Demo 'nominatim-search' } else {
         Invoke-Http ('https://nominatim.openstreetmap.org/search' + (Format-Query ([ordered]@{
-            q = $text; format = 'jsonv2'; limit = 5; countrycodes = 'cz'; 'accept-language' = 'cs'
+            q = $text; format = 'jsonv2'; limit = 5; countrycodes = 'cz'; 'accept-language' = 'cs'; addressdetails = 1
         }))) $null 'Nominatim'
     }
     @(@($found) | Where-Object { $_ -and $_.display_name -and $_.lat -and $_.lon } | ForEach-Object {
-        [pscustomobject]@{ Name = [string]$_.display_name; Latitude = [double]$_.lat; Longitude = [double]$_.lon }
+        [pscustomobject]@{
+            Name = [string]$_.display_name
+            Label = Format-Place $_
+            Latitude = [double]$_.lat
+            Longitude = [double]$_.lon
+        }
     })
+}
+
+# Krátké jméno místa do pole s adresou a do záhlaví přehledu: "Korunní 586/2, Vinohrady".
+# Celé jméno z Nominatimu je dlouhé a u domů začíná číslem popisným.
+function Format-Place($result) {
+    $a = $result.address
+    $street = (([string]$a.road), ([string]$a.house_number) | Where-Object { $_ }) -join ' '
+    $main = if ($result.name) { [string]$result.name } elseif ($a.house_number -and $a.road) { $street } else { '' }
+    if (-not $main) { return (@(([string]$result.display_name).Split(',') | Select-Object -First 2 | ForEach-Object { $_.Trim() }) -join ', ') }
+    $area = @($a.quarter, $a.suburb, $a.city_district, $a.district, $a.town, $a.village, $a.city | Where-Object { $_ -and $_ -ne $main })[0]
+    ($main, $area | Where-Object { $_ }) -join ', '
 }

@@ -1,5 +1,8 @@
 [
-  {"display_name": "Náměstí Míru, Vinohrady, Praha 2, Hlavní město Praha, 120 00, Česko", "lat": "50.0753", "lon": "14.4379"},
-  {"display_name": "náměstí Míru, Zbraslav, Praha 16, Hlavní město Praha, 156 00, Česko", "lat": "49.9713", "lon": "14.3923"},
-  {"display_name": "náměstí Míru, Mělník, okres Mělník, Středočeský kraj, 276 01, Česko", "lat": "50.3509", "lon": "14.4741"}
+  {"display_name": "Náměstí Míru, Vinohrady, Praha 2, Hlavní město Praha, 120 00, Česko", "name": "Náměstí Míru", "lat": "50.0753", "lon": "14.4379",
+   "address": {"square": "Náměstí Míru", "suburb": "Vinohrady", "city_district": "Praha 2", "city": "Praha", "postcode": "120 00", "country": "Česko"}},
+  {"display_name": "náměstí Míru, Zbraslav, Praha 16, Hlavní město Praha, 156 00, Česko", "name": "náměstí Míru", "lat": "49.9713", "lon": "14.3923",
+   "address": {"square": "náměstí Míru", "suburb": "Zbraslav", "city_district": "Praha 16", "city": "Praha", "postcode": "156 00", "country": "Česko"}},
+  {"display_name": "8/2, náměstí Míru, Mělník, okres Mělník, Středočeský kraj, 276 01, Česko", "name": "", "lat": "50.3509", "lon": "14.4741",
+   "address": {"house_number": "8/2", "road": "náměstí Míru", "town": "Mělník", "county": "okres Mělník", "postcode": "276 01", "country": "Česko"}}
 ]

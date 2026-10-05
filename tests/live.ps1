@@ -21,19 +21,24 @@ try {
     exit 2
 }
 
-$context = @{ Token = $token; Demo = $null; Limiter = New-Object System.Collections.Queue }
+$context = @{ Token = $token; Demo = $null; Limiter = New-Object System.Collections.Queue; Cache = @{} }
 $latitude = [double]$saved.latitude
 $longitude = [double]$saved.longitude
-"Místo: $($saved.place) ($(Format-LatLng $latitude $longitude))"
+$district = try { Get-District $context $latitude $longitude } catch { '' }
+"Místo: $($saved.place) ($(Format-LatLng $latitude $longitude))$(if ($district) { ", $district" })"
 
 # Kolik položek karta ukáže; podle toho je vidět, jestli data opravdu dorazila.
 $counts = [ordered]@{
     Transit = { param($d) "$(@($d.Departures).Count) odjezdů, $(@($d.Stops).Count) nástupišť, $(@($d.Infotexts).Count) mimořádností" }
-    Nearby = { param($d) "$(@($d.Items).Count) míst: " + (@($d.Items | ForEach-Object { "$($_.Kind) $($_.Distance)" }) -join ', ') }
+    Vehicles = { param($d) "$(@($d.Items).Count) vozidel, z toho $(@($d.Items | Where-Object { $_.Headsign }).Count) s cílem: " + (@($d.Items | ForEach-Object { "$($_.Route) $($_.Distance)" }) -join ', ') }
+    Alerts = { param($d) "$(@($d.Items).Count) ukázaných$(if ($d.More) { ", $($d.More)" })" }
+    Parking = { param($d) "$(@($d.Items).Count) parkovišť, z toho $(@($d.Items | Where-Object { $_.Capacity -like 'volných*' }).Count) s obsazeností$(if ($d.Machine) { ', automat v dosahu' })" }
+    Cars = { param($d) "$(@($d.Items).Count) aut: " + (@($d.Items | ForEach-Object { "$($_.Name) $($_.Distance)" }) -join ', ') }
+    Cycling = { param($d) "$($d.Total) $($d.Caption), $(@($d.Items).Count) směrů" }
     Waste = { param($d) "$(@($d.Stations).Count) stanovišť, $(@($d.Bulky).Count) velkoobjemových" + $(if ($d.BulkyNote) { " ($($d.BulkyNote))" }) }
+    Nearby = { param($d) "$(@($d.Items).Count) míst: " + (@($d.Items | ForEach-Object { "$($_.Kind) $($_.Distance)" }) -join ', ') }
     Air = { param($d) "$($d.Index), $(@($d.Components).Count) látek, $($d.Updated)" }
     Microclimate = { param($d) "$(@($d.Values).Count) veličin, $($d.Updated)" }
-    Parking = { param($d) "$(@($d.Items).Count) parkovišť, z toho $(@($d.Items | Where-Object { $_.Capacity -like 'volných*' }).Count) s obsazeností" }
 }
 
 $failed = 0

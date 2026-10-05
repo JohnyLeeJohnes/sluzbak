@@ -83,23 +83,29 @@ Check 'velkoobjemové: bez poznámky' $waste.BulkyNote ''
 Check 'odpad: není prázdno' $waste.Empty ''
 
 '--- ovzduší'
+# Seznam stanic má v ukázce (stejně jako naživo) měsíce staré měření; platná čísla jsou v historii.
 $air = Get-Air $demo $lat $lng
 CheckMatch 'stanice' $air.Meta '^Praha 2-Legerova · \d+ m$'
-Check 'index' $air.Index 'Přijatelná'
-Check 'barva indexu' "$($air.IndexColor) $($air.IndexTextColor)" '#00CC00 #000000'
+Check 'index z nejnovějšího řádku historie' $air.Index 'Přijatelná'
+Check 'barva indexu' "$($air.IndexColor) $($air.IndexTextColor)" '#FFF200 #000000'
 Check 'složky bez prázdné hodnoty' $air.Components.Count 5
 Check 'složky v pořadí' (($air.Components | ForEach-Object { "$($_.Code)/$($_.Hours)" }) -join ' ') 'NO2/1 O3/1 PM10/1 PM10/24 PM2_5/1'
 Check 'NO2: hodnota' $air.Components[0].Value '38,4 µg/m³'
 Check 'NO2: popis' $air.Components[0].Description 'oxid dusičitý'
 Check 'PM10 za den' $air.Components[3].Period 'průměr za 24 h'
+Check 'PM10 za den na jeden řádek' $air.Components[3].Detail 'částice PM10 · 24 h'
 CheckMatch 'čas měření' $air.Updated '^měřeno (dnes|zítra|\S+ \d+\. \d+\.) v \d{1,2}:\d\d$'
 
 '--- mikroklima'
 $micro = Get-Microclimate $demo $lat $lng
-CheckMatch 'senzor' $micro.Meta '^Náměstí Jiřího z Poděbrad · \d+ m$'
-Check 'veličiny' $micro.Values.Count 5
-Check 'teplota: poslední měření' ($micro.Values | Where-Object Name -eq 'Teplota vzduchu').Value '14,2 °C'
+CheckMatch 'senzor: nejbližší, který má data' $micro.Meta '^Náměstí Jiřího z Poděbrad · \d+ m$'
+Check 'veličiny: z každé jedna, v pořadí karty' (($micro.Values | ForEach-Object Name) -join ', ') 'Teplota, Vlhkost, Tlak, Vítr, Nárazy větru, Směr větru, Srážky, UV index'
+Check 'teplota: poslední měření, ze dvou metrů' ($micro.Values | Where-Object Name -eq 'Teplota').Value '14,2 °C'
+Check 'tlak v hektopascalech' ($micro.Values | Where-Object Name -eq 'Tlak').Value '1016 hPa'
+Check 'vítr zaokrouhlený' ($micro.Values | Where-Object Name -eq 'Vítr').Value '9,3 km/h'
+Check 'směr větru slovem' ($micro.Values | Where-Object Name -eq 'Směr větru').Value 'JZ'
 Check 'srážky: nula není prázdno' ($micro.Values | Where-Object Name -eq 'Srážky').Value '0 mm'
+Check 'veličina mimo seznam má jméno z číselníku' ($micro.Values | Where-Object Name -eq 'UV index').Value '2'
 CheckMatch 'mikroklima: čas' $micro.Updated '^měřeno v \d{1,2}:\d\d$'
 
 '--- parkování'
@@ -110,11 +116,12 @@ $garage = $parking.Items[0]
 Check 'volná místa' "$($garage.Free) $($garage.Capacity)" '47 volných z 180'
 Check 'volno je zelené' $garage.FreeColor '#7BD88F'
 Check 'režim má přednost před typem' $garage.Kind 'Placené'
-Check 'režim a vzdálenost na jednom řádku' $garage.Detail 'Placené · 520 m'
-Check 'bez obsazenosti jen kapacita' "$($parking.Items[1].Free)|$($parking.Items[1].Capacity)|$($parking.Items[1].Kind)" '64|míst celkem|Pro zákazníky'
+Check 'vzdálenost a režim na jednom řádku' $garage.Detail '520 m · Placené'
+Check 'bez obsazenosti jen kapacita' "$($parking.Items[1].Free)|$($parking.Items[1].Capacity)|$($parking.Items[1].Kind)" '64|míst|Pro zákazníky'
 Check 'kapacita je šedá, ne zelená' $parking.Items[1].FreeColor '#8C93A8'
 Check 'bez režimu se ukáže typ' "$($parking.Items[2].Kind)|$($parking.Items[2].Capacity)" 'Parkoviště|'
 Check 'plno je červené' "$($parking.Items[3].Free) $($parking.Items[3].FreeColor)" '0 #FF8A80'
+Check 'nejbližší parkovací automat' $parking.Machine 'Nejbližší parkovací automat 190 m'
 
 '--- MHD'
 $stops = @(Find-Stops $demo $lat $lng)
@@ -140,6 +147,50 @@ $nowhere = Get-Transit $demo 49.0 13.0 $null
 Check 'daleko od Prahy: hláška' $nowhere.Empty 'Do 600 m žádná zastávka PID není.'
 Check 'daleko od Prahy: nic' $nowhere.Departures.Count 0
 
+'--- vozidla v okolí'
+Check 'světové strany' ((0, 44, 90, 135, 200, 225, 265, 315, 359, -90 | ForEach-Object { Format-Compass $_ }) -join ' ') 'S SV V JV J JZ Z SZ S Z'
+Check 'bez azimutu nic' "$(Format-Compass $null)|$(Format-Compass '')|" '||'
+$vehicles = Get-Vehicles $demo $lat $lng
+Check 'vozidla do kilometru, bez vzdálenější tramvaje' $vehicles.Meta '4 do 1 km'
+Check 'vozidla od nejbližšího' (($vehicles.Items | ForEach-Object Route) -join ' ') 'A 22 135 16'
+$metro = $vehicles.Items[0]
+Check 'metro: barva linky, cíl ze spoje' "$($metro.Color) $($metro.Headsign) / $($metro.State) / $($metro.Delay)|" '#00A562 Depo Hostivař / v zastávce / |'
+$moving = $vehicles.Items[1]
+Check 'tramvaj na trati: směr a zpoždění z vteřin' "$($moving.Color) $($moving.Headsign) / $($moving.State) / $($moving.Delay)" '#7A0603 Bílá Hora / směr Z / +2 min'
+Check 'zpoždění pod půl minuty se neukazuje' "$($vehicles.Items[2].Color) $($vehicles.Items[2].Delay)|" '#007DA8 |'
+CheckMatch 'vozidlo: vzdálenost' $moving.Distance '^\d+ m$'
+Check 'nikde nic nejede' (Get-Vehicles $demo 49.0 13.0).Empty 'Do 1 km teď žádný spoj MHD nejede.'
+
+'--- mimořádnosti'
+$alerts = Get-Alerts $demo $lat $lng
+Check 'mimořádnosti' "$($alerts.Meta) / $($alerts.Items.Count)$($alerts.More)" '3 v celé síti / 3'
+Check 'nejdřív nejzávažnější' (($alerts.Items | ForEach-Object { $_.Text.Split(' ')[0] }) -join ' ') 'Metro Provoz Mezi'
+Check 'zastávky jednou a nejvýš tři' $alerts.Items[0].Stops 'Pražského povstání, Pankrác, Budějovická a další'
+Check 'dvě nástupiště téže zastávky' $alerts.Items[1].Stops 'Smíchovské nádraží, Lihovar'
+Check 'konec platnosti' "$($alerts.Items[0].Until) / $($alerts.Items[2].Until)" 'do zítra / dnes končí'
+CheckMatch 'konec za dva týdny datem' $alerts.Items[1].Until '^do (po|út|st|čt|pá|so|ne) \d{1,2}\. \d{1,2}\.$'
+Check 'závažná je červená, ostatní oranžové' "$($alerts.Items[0].Color) $($alerts.Items[1].Color)" '#FF8A80 #E9A45B'
+
+'--- sdílená auta'
+$cars = Get-Cars $demo $lat $lng
+Check 'auta do 1,5 km' $cars.Meta '3 do 1,5 km'
+Check 'auta od nejbližšího, značka jen jednou' (($cars.Items | ForEach-Object Name) -join ' | ') 'Škoda Fabia | Škoda Enyaq | Toyota Yaris Cross'
+Check 'auto: provozovatel, palivo, dostupnost' $cars.Items[2].Detail 'Anytime · hybrid · ihned'
+CheckMatch 'auto: vzdálenost' $cars.Items[0].Distance '^\d+ m$'
+
+'--- cyklosčítač'
+$cycling = Get-Cycling $demo $lat $lng
+Check 'bližší sčítač hlásí nuly, bere se další' $cycling.Meta 'Podolské nábřeží · 2,5 km'
+Check 'součet obou směrů' ($cycling.Total -replace '\s') '2801'
+Check 'trasa v popisku' $cycling.Caption 'kol od půlnoci · trasa A 2'
+Check 'směry' (($cycling.Items | ForEach-Object { "$($_.Name) $($_.Value -replace '(?<=\d)\s(?=\d)')" }) -join ' | ') 'směr centrum 1412 | směr Braník 1389 · pěších 257'
+
+'--- městská část'
+Check 'bod uvnitř obrysu' (Test-InRing @(@(0, 0), @(4, 0), @(4, 4), @(0, 4)) 2 2) $true
+Check 'bod vedle obrysu' (Test-InRing @(@(0, 0), @(4, 0), @(4, 4), @(0, 4)) 2 5) $false
+Check 'městská část místa, ne první v odpovědi' (Get-District $demo $lat $lng) 'Praha 2'
+Check 'mimo Prahu nic' "$(Get-District $demo 49.0 13.0)|" '|'
+
 '--- volby uživatele'
 $tight = @{ Token = ''; Demo = $demo.Demo; Options = @{ StopsRange = 300; WasteRange = 100; ParkingRange = 600; Departures = 4 } }
 Check 'bez voleb platí výchozí' "$(Get-Option $demo 'StopsRange') $(Get-Option $demo 'Departures')" '600 12'
@@ -159,16 +210,20 @@ Check 'nic v okruhu: parkování' (Get-Parking $strict $lat $lng).Empty 'Do 200 
 
 '--- v okolí'
 $nearby = Get-Nearby $demo $lat $lng
-Check 'od každého druhu jedno místo' (($nearby.Items | ForEach-Object Kind) -join ' | ') 'Lékárna | Knihovna | Úřad | Městská policie | Sběrný dvůr'
+Check 'od každého druhu jedno místo' (($nearby.Items | ForEach-Object Kind) -join ' | ') 'Lékárna | Nemocnice | Knihovna | Úřad | Městská policie | Sběrný dvůr | Hřiště | Zahrada'
 $pharmacy = $nearby.Items[0]
 Check 'nejbližší lékárna, ne první v odpovědi' "$($pharmacy.Name) / $($pharmacy.Address)" 'Lékárna U Ludmily / Jugoslávská 620/29'
 Check 'nonstop' "$($pharmacy.Status) $($pharmacy.StatusColor)" 'otevřeno nonstop #7BD88F'
 CheckMatch 'vzdálenost' $pharmacy.Distance '^\d+ m$'
-CheckMatch 'knihovna: stav podle otevírací doby' $nearby.Items[1].Status '^(otevřeno do \d{1,2}:\d\d|otevírá (zítra |[a-zčú]{2} )?v \d{1,2}:\d\d)$'
-Check 'úřad: ulice z celé adresy' $nearby.Items[2].Address 'náměstí Míru 600/20'
-$police = $nearby.Items[3]
+Check 'nemocnice: nejbližší nemocnice, ne bližší ordinace' "$($nearby.Items[1].Name) / $($nearby.Items[1].Distance)" 'Všeobecná fakultní nemocnice v Praze / 1,1 km'
+CheckMatch 'knihovna: stav podle otevírací doby' $nearby.Items[2].Status '^(otevřeno do \d{1,2}:\d\d|otevírá (zítra |[a-zčú]{2} )?v \d{1,2}:\d\d)$'
+Check 'úřad: ulice z celé adresy' $nearby.Items[3].Address 'náměstí Míru 600/20'
+$police = $nearby.Items[4]
 Check 'policie: místo jména adresa' "$($police.Name) / $($police.Address) / $($police.Status)|" 'Lublaňská 1729/21 / Vinohrady / |'
-Check 'sběrný dvůr: otevírací doba textem' "$($nearby.Items[4].Hours) / $($nearby.Items[4].Status)|" 'Po–Pá 8:30–18:00 (v zimě do 17:00), So 8:30–15:00 / |'
+Check 'sběrný dvůr: otevírací doba textem' "$($nearby.Items[5].Hours) / $($nearby.Items[5].Status)|" 'Po–Pá 8:30–18:00 (v zimě do 17:00), So 8:30–15:00 / |'
+Check 'hřiště: nejbližší a jeho vybavení' "$($nearby.Items[6].Name) / $($nearby.Items[6].Hours)" 'Riegrovy sady - Na Smetance / Plocha pro míčové hry, Voda-hydrant nebo umyvadlo'
+Check 'zahrada: otevírací doba z vlastností' "$($nearby.Items[7].Name) / $($nearby.Items[7].Hours)" 'Riegrovy sady / Celoročně volný přístup'
+Check 'podrobnosti do bubliny' $nearby.Items[7].Detail "Riegrovy sady`nRiegrovy sady 28`nCeloročně volný přístup"
 
 '--- otevírací doba'
 # 5. 10. 2026 je pondělí.
@@ -220,6 +275,10 @@ Check 'bez fronty se nic nehlídá' $true $true
 $found = @(Find-Address $demo 'náměstí Míru')
 Check 'nalezené adresy' $found.Count 3
 Check 'první adresa' "$($found[0].Name.Split(',')[0]) $($found[0].Latitude) $($found[0].Longitude)" 'Náměstí Míru 50.0753 14.4379'
+Check 'krátká jména do pole s adresou' (($found | ForEach-Object Label) -join ' | ') 'Náměstí Míru, Vinohrady | náměstí Míru, Zbraslav | náměstí Míru 8/2, Mělník'
+Check 'dům: ulice s číslem místo čísla na začátku' (Format-Place @{ display_name = '586/2, Korunní, Vinohrady, Praha'; address = @{ road = 'Korunní'; house_number = '586/2'; suburb = 'Vinohrady' } }) 'Korunní 586/2, Vinohrady'
+Check 'ulice bez čísla: začátek celého jména' (Format-Place @{ display_name = 'Korunní, Vinohrady, Praha 2, Česko'; address = @{ road = 'Korunní' } }) 'Korunní, Vinohrady'
+Check 'místo se jménem čtvrti se neopakuje' (Format-Place @{ name = 'Vinohrady'; display_name = 'Vinohrady, Praha'; address = @{ suburb = 'Vinohrady'; city = 'Praha' } }) 'Vinohrady, Praha'
 Check 'ověření klíče' (Test-Token $demo) $true
 
 '--- místa, kde si specifikace API protiřečí'
@@ -230,25 +289,52 @@ try {
     $utf8 = New-Object Text.UTF8Encoding $false
 
     # Index ovzduší jako číslo (tak ho uvádí specifikace) se páruje podle id.
-    $text = [IO.File]::ReadAllText("$quirks\v2-airqualitystations.json") -replace '"AQ_hourly_index": "1B"', '"AQ_hourly_index": 2'
-    [IO.File]::WriteAllText("$quirks\v2-airqualitystations.json", $text, $utf8)
+    $history = "$quirks\v2-airqualitystations-history.json"
+    $text = [IO.File]::ReadAllText($history) -replace '"AQ_hourly_index": "2A"', '"AQ_hourly_index": 3'
+    [IO.File]::WriteAllText($history, $text, $utf8)
     Check 'index jako číslo' (Get-Air $alt $lat $lng).Index 'Přijatelná'
 
     # Neznámý index se ukáže aspoň kódem.
-    [IO.File]::WriteAllText("$quirks\v2-airqualitystations.json", ($text -replace '"AQ_hourly_index": 2', '"AQ_hourly_index": "9Z"'), $utf8)
+    [IO.File]::WriteAllText($history, ($text -replace '"AQ_hourly_index": 3', '"AQ_hourly_index": "9Z"'), $utf8)
     Check 'neznámý index' (Get-Air $alt $lat $lng).Index 'Index 9Z'
 
-    # Měření stará dva měsíce (tak to Golemio naživo vracelo) se jako aktuální neukáže.
-    [IO.File]::WriteAllText("$quirks\v2-airqualitystations.json", ($text -replace '\{\{now-25\}\}', '2026-08-12T06:45:00.621Z'), $utf8)
+    # Bez historie zbývá stav ze seznamu stanic. Ten je dva měsíce starý (tak to Golemio naživo vracelo)
+    # a jako aktuální se ukázat nesmí.
+    Remove-Item $history
     Check 'staré měření ovzduší' (Get-Air $alt $lat $lng).Empty 'Golemio má poslední měření ovzduší z 12. 8. v 8:45. Novější teď neposkytuje.'
-    [IO.File]::WriteAllText("$quirks\v2-airqualitystations.json", $text, $utf8)
 
-    # Body mikroklimatu jako jeden objekt místo seznamu, název v point_name.
+    # Čerstvý stav v seznamu stanic se bez historie použije.
+    $stations = [IO.File]::ReadAllText("$quirks\v2-airqualitystations.json") -replace '2026-08-12T06:45:00\.621Z', '{{now-25}}'
+    [IO.File]::WriteAllText("$quirks\v2-airqualitystations.json", $stations, $utf8)
+    $listed = Get-Air $alt $lat $lng
+    Check 'bez historie: čerstvý stav ze seznamu' "$($listed.Index) $($listed.Components[0].Value)" 'Zhoršená až špatná 77,7 µg/m³'
+    [IO.File]::WriteAllText($history, $text, $utf8)
+
+    # Body mikroklimatu jako jeden objekt místo seznamu.
     [IO.File]::WriteAllText("$quirks\v2-microclimate-points.json",
         '{"point_id": 207, "location_id": 200, "point_name": "Jediný bod", "lat": 50.0779, "lng": 14.45, "measures": []}', $utf8)
     $single = Get-Microclimate $alt $lat $lng
     CheckMatch 'jeden bod místo seznamu' $single.Meta '^Jediný bod · \d+ m$'
-    Check 'bez číselníku veličin zůstane kód' ($single.Values | Where-Object Name -eq 'air_temp200').Value '14,2 °C'
+    Check 'bez číselníku veličin zůstane kód' ($single.Values | Where-Object Name -eq 'uv_index').Value '2'
+
+    # Když za poslední hodiny neměřil žádný senzor (naživo od dubna 2026), karta to řekne rovnou.
+    [IO.File]::WriteAllText("$quirks\v2-microclimate-measurements.json", '[]', $utf8)
+    Check 'mikroklima bez měření' (Get-Microclimate $alt $lat $lng).Empty 'Golemio teď nemá čerstvá data z žádného senzoru mikroklimatu.'
+
+    # Kam spoj jede, je v samostatném dotazu; když selže, vozidlo se ukáže bez cíle.
+    Remove-Item "$quirks\v2-public-gtfs-trips-22_1840_260901.json"
+    $global:GolemWatchCache = @{}
+    $noTrip = (Get-Vehicles $alt $lat $lng).Items | Where-Object Route -eq '22'
+    Check 'vozidlo bez popisu spoje' "$($noTrip.Headsign)|$($noTrip.State)" '|směr Z'
+
+    # Klíč bez přístupu k velkoobjemovým kontejnerům: část se schová, není to chyba.
+    function Invoke-Api($context, [string]$path, $query = @{}) {
+        if ($path -eq '/v1/bulky-waste/stations') { throw (ConvertTo-ApiError 403) }
+        Read-Demo $context.Demo $path
+    }
+    $forbidden = Get-Waste $alt $lat $lng
+    Check 'velkoobjemové bez přístupu' "$($forbidden.ShowBulky)|$($forbidden.BulkyNote)|$($forbidden.Stations.Count)" 'False||2'
+    . (Join-Path $root 'Golemio.ps1')
 
     # Pozice stanoviště zabalená do pole navíc, přesně jako v příkladu ze specifikace.
     $text = [IO.File]::ReadAllText("$quirks\v2-sortedwastestations.json") -replace '"coordinates": \[14\.4386, 50\.0758\]', '"coordinates": [[14.4386, 50.0758]]'

@@ -1,18 +1,28 @@
 [
   {
-    "point_id": 131, "location_id": 130, "point_named": "Pražská tržnice osvětlení", "location": "Pražská Holešovická tržnice",
+    "point_id": 131, "location_id": 130, "point_name": "Pražská tržnice osvětlení", "location": "Pražská Holešovická tržnice",
     "loc_description": "areál bez zeleně", "lat": 50.098934, "lng": 14.445023, "elevation_m": 184.3,
     "measures": [{"measure": "air_temp200", "measure_cz": "Teplota vzduchu, 200 cm", "unit": "°C"}]
   },
   {
-    "point_id": 207, "location_id": 200, "point_named": "Náměstí Jiřího z Poděbrad", "location": "Vinohrady",
+    "point_id": 215, "location_id": 210, "point_name": "Riegrovy sady strom", "location": "Vinohrady",
+    "loc_description": "park", "lat": 50.0795, "lng": 14.4405, "elevation_m": 255.0,
+    "measures": [{"measure": "air_temp200", "measure_cz": "Teplota vzduchu, 200 cm", "unit": "°C"}]
+  },
+  {
+    "point_id": 207, "location_id": 200, "point_name": "Náměstí Jiřího z Poděbrad", "location": "Vinohrady",
     "loc_description": "náměstí se vzrostlými stromy", "lat": 50.0779, "lng": 14.45, "elevation_m": 262.1,
     "measures": [
-      {"measure": "air_temp200", "measure_cz": "Teplota vzduchu", "unit": "°C"},
-      {"measure": "air_hum200", "measure_cz": "Vlhkost vzduchu", "unit": "%"},
-      {"measure": "pressure", "measure_cz": "Tlak vzduchu", "unit": "hPa"},
-      {"measure": "wind_speed_avg", "measure_cz": "Rychlost větru", "unit": "km/h"},
-      {"measure": "precip", "measure_cz": "Srážky", "unit": "mm"}
+      {"measure": "air_hum200", "measure_cz": "Vlhkost vzduchu, 200 cm", "unit": "%"},
+      {"measure": "air_hum50", "measure_cz": "Vlhkost vzduchu, 50 cm", "unit": "%"},
+      {"measure": "air_temp200", "measure_cz": "Teplota vzduchu, 200 cm", "unit": "°C"},
+      {"measure": "air_temp50", "measure_cz": "Teplota vzduchu, 50 cm", "unit": "°C"},
+      {"measure": "precip300", "measure_cz": "Úhrn srážek, 300 cm", "unit": "mm"},
+      {"measure": "pressure200", "measure_cz": "Atmosférický tlak, 200 cm", "unit": "Pa"},
+      {"measure": "wind_dir300", "measure_cz": "Směr větru, 300 cm", "unit": "°"},
+      {"measure": "wind_impact300", "measure_cz": "Náraz větru, 300 cm", "unit": "km/h"},
+      {"measure": "wind_speed300", "measure_cz": "Rychlost větru, 300 cm", "unit": "km/h"},
+      {"measure": "uv_index", "measure_cz": "UV index", "unit": ""}
     ]
   }
 ]

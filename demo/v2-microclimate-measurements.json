@@ -1,8 +1,14 @@
 [
-  {"point_id": 207, "location_id": 200, "measured_at": "{{now-25}}", "measure": "air_temp200", "value": 13.9, "unit": "°C"},
+  {"point_id": 207, "location_id": 200, "measured_at": "{{now-20}}", "measure": "air_temp200", "value": 13.9, "unit": "°C"},
   {"point_id": 207, "location_id": 200, "measured_at": "{{now-10}}", "measure": "air_temp200", "value": 14.2, "unit": "°C"},
+  {"point_id": 207, "location_id": 200, "measured_at": "{{now-10}}", "measure": "air_temp50", "value": 16.8, "unit": "°C"},
   {"point_id": 207, "location_id": 200, "measured_at": "{{now-10}}", "measure": "air_hum200", "value": 71, "unit": "%"},
-  {"point_id": 207, "location_id": 200, "measured_at": "{{now-10}}", "measure": "pressure", "value": 1016.4, "unit": "hPa"},
-  {"point_id": 207, "location_id": 200, "measured_at": "{{now-10}}", "measure": "wind_speed_avg", "value": 9.3, "unit": "km/h"},
-  {"point_id": 207, "location_id": 200, "measured_at": "{{now-10}}", "measure": "precip", "value": 0, "unit": "mm"}
+  {"point_id": 207, "location_id": 200, "measured_at": "{{now-10}}", "measure": "air_hum50", "value": 78.4, "unit": "%"},
+  {"point_id": 207, "location_id": 200, "measured_at": "{{now-10}}", "measure": "pressure200", "value": 101640, "unit": "Pa"},
+  {"point_id": 207, "location_id": 200, "measured_at": "{{now-10}}", "measure": "wind_speed300", "value": 9.335964546784846, "unit": "km/h"},
+  {"point_id": 207, "location_id": 200, "measured_at": "{{now-10}}", "measure": "wind_impact300", "value": 21.5139, "unit": "km/h"},
+  {"point_id": 207, "location_id": 200, "measured_at": "{{now-10}}", "measure": "wind_dir300", "value": 230, "unit": "°"},
+  {"point_id": 207, "location_id": 200, "measured_at": "{{now-10}}", "measure": "precip300", "value": 0, "unit": "mm"},
+  {"point_id": 207, "location_id": 200, "measured_at": "{{now-10}}", "measure": "uv_index", "value": 2, "unit": ""},
+  {"point_id": 131, "location_id": 130, "measured_at": "{{now-10}}", "measure": "air_temp200", "value": 15.1, "unit": "°C"}
 ]

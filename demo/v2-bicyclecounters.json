@@ -1,0 +1,11 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [14.4165, 50.0570]},
+     "properties": {"id": "camea-BC_PN-VYBR", "name": "Podolské nábřeží", "route": "A 2",
+       "directions": [{"id": "camea-BC_PN-VY", "name": "centrum"}, {"id": "camea-BC_PN-BR", "name": "Braník"}], "updated_at": "{{now-5}}"}},
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [14.4452, 50.0768]},
+     "properties": {"id": "camea-BC_VI-CEFL", "name": "Vinohradská", "route": "A 23",
+       "directions": [{"id": "camea-BC_VI-CE", "name": "centrum"}, {"id": "camea-BC_VI-FL", "name": "Flora"}], "updated_at": "{{now-5}}"}}
+  ]
+}

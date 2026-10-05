@@ -42,6 +42,38 @@
           {"day_of_week": "Sunday", "opens": "00:00", "closes": "23:59"}
         ]
       }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [14.4371,50.0769]},
+      "properties": {
+        "id": "00000000010-ordinace-anglicka",
+        "name": "Ordinace Anglická",
+        "address": {"address_formatted": "Anglická 140/20, 12000 Praha-Vinohrady, Česko", "street_address": "Anglická 140/20", "postal_code": "12000", "address_locality": "Praha", "address_region": "Vinohrady", "address_country": "Česko"},
+        "district": "praha-2",
+        "type": {"description": "Zdravotnické středisko", "group": "health_care", "id": "ZS-ZDS"},
+        "telephone": [],
+        "email": [],
+        "web": [],
+        "updated_at": "{{now-600}}",
+        "opening_hours": []
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [14.4222,50.0747]},
+      "properties": {
+        "id": "00000000011-vseobecna-fakultni-nemocnice",
+        "name": "Všeobecná fakultní nemocnice v Praze",
+        "address": {"address_formatted": "U Nemocnice 499/2, 12800 Praha-Nové Město, Česko", "street_address": "U Nemocnice 499/2", "postal_code": "12800", "address_locality": "Praha", "address_region": "Nové Město", "address_country": "Česko"},
+        "district": "praha-2",
+        "type": {"description": "Fakultní nemocnice", "group": "health_care", "id": "FN"},
+        "telephone": [],
+        "email": [],
+        "web": ["https://www.vfn.cz"],
+        "updated_at": "{{now-600}}",
+        "opening_hours": []
+      }
     }
   ]
 }

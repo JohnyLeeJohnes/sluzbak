@@ -1,0 +1,15 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "Polygon", "coordinates": [[[14.4500, 50.0760], [14.4900, 50.0760], [14.4900, 50.0950], [14.4500, 50.0950], [14.4500, 50.0760]]]},
+      "properties": {"id": 1303, "name": "Praha 3", "slug": "praha-3", "updated_at": "{{now-600}}"}
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Polygon", "coordinates": [[[14.4130, 50.0610], [14.4500, 50.0610], [14.4500, 50.0860], [14.4130, 50.0860], [14.4130, 50.0610]]]},
+      "properties": {"id": 1302, "name": "Praha 2", "slug": "praha-2", "updated_at": "{{now-600}}"}
+    }
+  ]
+}

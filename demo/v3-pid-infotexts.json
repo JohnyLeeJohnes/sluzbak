@@ -1,0 +1,23 @@
+[
+  {
+    "id": "5f50475e-b4c0-47fd-8de9-84334d3e727b", "priority": "normal", "display_type": "inline",
+    "text": "Provoz TRAM v úseku Smíchovské nádraží – Na Knížecí je přerušen. Zavedena je náhradní doprava BUS X12.",
+    "text_en": "No tram service between Smíchovské nádraží and Na Knížecí. Replacement bus X12 is introduced.",
+    "related_stops": [{"id": "U458Z1P", "name": "Smíchovské nádraží", "platform_code": "A"}, {"id": "U458Z2P", "name": "Smíchovské nádraží", "platform_code": "B"}, {"id": "U337Z13P", "name": "Lihovar", "platform_code": "C"}],
+    "valid_from": "{{day-2}}T00:00:00+02:00", "valid_to": "{{day+13}}T23:59:00+02:00"
+  },
+  {
+    "id": "0b6c3e0e-1f8a-4a1e-9a55-3c1f7f1f2c11", "priority": "low", "display_type": "general",
+    "text": "Mezi Černým koněm a Belárií začne fungovat nová tramvajová zastávka Hodkovičky.",
+    "text_en": "A new tram stop Hodkovičky opens between Černý kůň and Belárie.",
+    "related_stops": [{"id": "U2731Z1P", "name": "Hodkovičky", "platform_code": "A"}],
+    "valid_from": "{{day-1}}T00:00:00+02:00", "valid_to": "{{day+0}}T23:59:00+02:00"
+  },
+  {
+    "id": "7a2d9c44-52e1-4f0b-b6a3-d1c0a4e7b9f2", "priority": "high", "display_type": "general",
+    "text": "Metro C mezi stanicemi Pražského povstání a Kačerov nejede. Využijte náhradní autobusy XC.",
+    "text_en": "No metro C service between Pražského povstání and Kačerov. Use replacement buses XC.",
+    "related_stops": [{"id": "U597Z101P", "name": "Pražského povstání", "platform_code": "1"}, {"id": "U385Z101P", "name": "Pankrác", "platform_code": "1"}, {"id": "U50Z101P", "name": "Budějovická", "platform_code": "1"}, {"id": "U228Z101P", "name": "Kačerov", "platform_code": "1"}],
+    "valid_from": "{{day+0}}T00:00:00+02:00", "valid_to": "{{day+1}}T04:00:00+02:00"
+  }
+]
