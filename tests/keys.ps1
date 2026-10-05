@@ -94,8 +94,17 @@ Step 'druhé hledání' { -not $state.Finding } {
 Step 'uložení ze seznamu' { $ui.DashboardView.IsEnabled -and -not $state.Manual } {
     Check 'přehled s vybranou adresou' $ui.PlaceText.Text 'Náměstí Míru, Vinohrady'
     Check 'nastavení je na disku' (Test-Path $settings) $true
+    # Kdy se která odpověď stáhla; po F5 se smí změnit jen to, co už není čerstvé.
+    $script:fetched = @{}
+    foreach ($key in @($cache.Keys)) { $script:fetched[$key] = $cache[$key].At }
     Press $window 'F5'
     Check 'F5 obnoví přehled' $state.Manual $true
+}
+Step 'obnovení klávesou F5' { -not $state.Manual } {
+    $again = @($script:fetched.Keys | Where-Object { $cache[$_].At -ne $script:fetched[$_] })
+    Check 'v paměti jsou odpovědi pro karty na záložce' ($script:fetched.Count -ge 8) $true
+    Check 'F5 nestahuje znovu, co je čerstvé' "$($again.Count)" '0'
+    Check 'karty mají data dál' "$($ui.TransitBody.Visibility) $($ui.AlertsBody.Visibility)" 'Visible Visible'
 
     Show-Setup
     Check 'uložená adresa je v poli' $ui.AddressBox.Text 'Náměstí Míru, Vinohrady'

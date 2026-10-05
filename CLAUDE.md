@@ -19,7 +19,13 @@ stahují a zobrazují. Vzorem je sesterský projekt Spáč (`C:\Projects\Persona
 - Funkce `Sloveso-Podstatné` (`Get-Waste`), proměnné camelCase, parametry skriptu PascalCase. Komentáře říkají *proč*.
 - Každá funkce datové vrstvy dostává `$context = @{ Token; Demo; Limiter; Cache; Options }`: `Demo` je složka
   s ukázkovými odpověďmi místo sítě, `Limiter` fronta sdílená všemi úlohami pro hlídání limitu API, `Cache`
-  sdílená paměť pro `Get-Cached` (číselníky, cíle spojů), `Options` volby uživatele.
+  sdílená paměť odpovědí (bez ní se nepamatuje nic), `Options` volby uživatele.
+- Paměť odpovědí je v `Invoke-Api`, jen v paměti procesu, nikdy na disku. Čtvrtý parametr říká, jak starou
+  odpověď lze použít: `$cacheSlow` (600 s, výchozí), `$cacheLive` (10 s, odjezdy a polohy), `$cacheStatic`
+  (číselníky, cíle spojů, zastávky kolem místa), `0` = vždy na síť (`Test-Token`, stránky seznamu zastávek).
+  Čas v dotazu zaokrouhli (`Get-HoursAgo`), jinak má každý dotaz jiný klíč. Pamatuje se i odmítnutí 403.
+- `-Optional` je dotaz, bez kterého se karta obejde (cíl vozidla): při plnějším limitu skončí chybou `Busy`,
+  funkce vrátí `Pending = $true` a okno sekci načte znovu za 9 s.
 - `Golemio.ps1` nemá o okně tušení. Funkce `Get-<Sekce>` vracejí `[pscustomobject]` připravený k zobrazení:
   hotové texty, barvy jako `#RRGGBB`, vždy `Meta` (text do záhlaví karty) a `Empty` (hláška místo dat, jinak `''`).
 - Chyby z datové vrstvy: `throw (New-ApiError <druh> <česká hláška>)`; druh je v `Exception.Data['Kind']`
@@ -32,7 +38,8 @@ stahují a zobrazují. Vzorem je sesterský projekt Spáč (`C:\Projects\Persona
 - Záložky přehledu: `$pages` (`GolemWatch.ps1`, kopie v `tests/e2e.ps1`) říká, které sekce na které jsou;
   v XAML k záložce patří `<Záložka>Tab`, `<Záložka>Page` a sloupce `<Záložka>Column1` až `3`.
 - Načítá se jen otevřená záložka: `Start-Due` pustí sekce, kterým vypršel termín v `$state.Due`. Sekce
-  v `$live` se obnovují podle volby Refresh, ostatní po 10 minutách, po chybě spojení za 30 s.
+  v `$live` se obnovují podle volby Refresh, ostatní po `$cacheSlow`, po chybě spojení za 30 s. Termín se
+  počítá od doručení dat, aby paměť odpovědí byla při obnovení už prošlá. Ruční obnovení jde přes tutéž paměť.
 - Volby uživatele: výchozí hodnoty v `$defaultOptions` (`Golemio.ps1`), meze v `$limits` (`GolemWatch.ps1`),
   pole `<Volba>Box` v nastavení. Datová vrstva je čte přes `Get-Option $context <jméno>`, nikdy napevno.
   `ConvertTo-Option` srovná cokoli (text z pole, hodnotu ze souboru) do mezí.
@@ -63,8 +70,8 @@ powershell -ExecutionPolicy Bypass -File tests/e2e.ps1
 powershell -ExecutionPolicy Bypass -File tests/keys.ps1
 ```
 
-- `tests/unit.ps1` – datová vrstva nad `demo/`, formátování, chyby a varianty, kde si specifikace API protiřečí.
-  Jeden test nejde pustit zvlášť; soubor je rychlý.
+- `tests/unit.ps1` – datová vrstva nad `demo/`, formátování, chyby, varianty, kde si specifikace API protiřečí,
+  a paměť odpovědí (síť zastupuje vlastní `Invoke-Http` s počítadlem). Jeden test nejde pustit zvlášť.
 - `tests/e2e.ps1` – UI Automation: nastavení, hledání adresy, obě záložky, volby, chyba v jedné kartě. Otevírá
   skutečná okna. Schované prvky ve stromu zůstávají, viditelnost se pozná podle `IsOffscreen`.
 - `tests/keys.ps1` – Enter, šipky, kliknutí na adresu a fokus v nastavení. Aplikaci načte do vlastního procesu
@@ -109,8 +116,9 @@ tests/, tools/
   - typografické uvozovky `„` a `“` PowerShell bere jako konec řetězce: v `"…"` je nepoužívat.
 - Golemio API:
   - hlavička `X-Access-Token`, nejvýš 10 000 řádků na požadavek;
-  - limit 20 požadavků za 8 s na klíč: `Wait-RateLimit` jich pustí 18 a s dalším počká. První načtení záložky
-    Doprava jich potřebuje přes 20, takže každá nová karta už znamená čekání;
+  - limit 20 požadavků za 8 s na klíč: `Wait-RateLimit` jich pustí 18 a s dalším počká, nepovinné dotazy
+    smí jen do 12. Odmítnutí 429 se po okně limitu jednou zopakuje. Naživo: první načtení obou záložek
+    34 dotazů (Doprava 13 + až 8 cílů spojů, Okolí 16), opakované do 10 minut 0 až 3;
   - první dotaz na některé endpointy trvá i přes 30 s (stanice ovzduší, cyklosčítače): `Invoke-Http` proto
     každý neúspěch jednou zopakuje;
   - endpointy míst (`/v2/medicalinstitutions` a podobné) podle `latlng` jen řadí, vzdálenost omezuje `range`;

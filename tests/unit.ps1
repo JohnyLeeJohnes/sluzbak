@@ -271,6 +271,88 @@ Check 've frontě zůstává jen posledních 8 sekund' $queue.Count 18
 Wait-RateLimit $null
 Check 'bez fronty se nic nehlídá' $true $true
 
+'--- paměť odpovědí'
+# Síť tu zastupuje počítadlo: je vidět, kolikrát se pro odpověď opravdu šlo ven.
+$script:calls = New-Object System.Collections.ArrayList
+$script:reject = 0
+function Invoke-Http([string]$uri, [string]$token, [string]$service) {
+    $null = $script:calls.Add($uri)
+    if ($script:reject -gt 0) { $script:reject--; throw (ConvertTo-ApiError 429) }
+    if ($uri -match '/forbidden') { throw (ConvertTo-ApiError 403) }
+    if ($uri -match '/vehiclepositions') { return Read-Demo $demo.Demo '/v2/public/vehiclepositions' }
+    if ($uri -match '/gtfs/trips/([^?]+)') { return @{ trip_headsign = "cíl $($Matches[1])" } }
+    @{ n = $script:calls.Count }
+}
+# Zestárne všechno, co v paměti je, o daný počet sekund.
+function Age($memory, [double]$seconds) { foreach ($key in @($memory.Keys)) { $memory[$key].At = $memory[$key].At.AddSeconds(-$seconds) } }
+
+$memory = @{}
+$net = @{ Token = 'x'; Demo = $null; Cache = $memory }
+$null = Invoke-Api $net '/v2/x' ([ordered]@{ a = 1 })
+$again = Invoke-Api $net '/v2/x' ([ordered]@{ a = 1 })
+Check 'stejný dotaz podruhé jde z paměti' "$($script:calls.Count) $($again.n)" '1 1'
+$null = Invoke-Api $net '/v2/x' ([ordered]@{ a = 2 })
+Check 'jiný dotaz jde na síť' $script:calls.Count 2
+Age $memory 599
+$null = Invoke-Api $net '/v2/x' ([ordered]@{ a = 1 })
+Check 'těsně před deseti minutami pořád z paměti' $script:calls.Count 2
+Age $memory 2
+$fresh = Invoke-Api $net '/v2/x' ([ordered]@{ a = 1 })
+Check 'po deseti minutách znovu na síť' "$($script:calls.Count) $($fresh.n)" '3 3'
+Check 'prošlé odpovědi se uklízejí' $memory.Count 1
+
+$null = Invoke-Api $net '/v2/live' @{} $cacheLive
+$null = Invoke-Api $net '/v2/live' @{} $cacheLive
+Check 'odjezdy hned podruhé z paměti' $script:calls.Count 4
+Age $memory ($cacheLive + 1)
+$null = Invoke-Api $net '/v2/live' @{} $cacheLive
+Check 'odjezdy po pár sekundách znovu na síť' $script:calls.Count 5
+$null = Get-Cached $net '/v2/dictionary'
+Age $memory 86400
+$null = Get-Cached $net '/v2/dictionary'
+Check 'číselník se stahuje jednou' $script:calls.Count 6
+$null = Test-Token $net
+$null = Test-Token $net
+Check 'ověření klíče jde na síť pokaždé' $script:calls.Count 8
+$bare = @{ Token = 'x'; Demo = $null }
+$null = Invoke-Api $bare '/v2/x'
+$null = Invoke-Api $bare '/v2/x'
+Check 'bez paměti v kontextu se nepamatuje nic' $script:calls.Count 10
+
+# Odmítnutí kvůli limitu (429): po okně limitu druhý pokus, teprve pak chyba. Okno je tu zkrácené, ať test nečeká.
+$rateWindow = 0.05
+$script:reject = 1
+$after = Invoke-Api $net '/v2/busy'
+Check 'odmítnuto kvůli limitu: druhý pokus projde' "$($script:calls.Count) $($after.n)" '12 12'
+$script:reject = 2
+Check 'dvakrát odmítnuto je chyba' (ErrorKind { Invoke-Api $net '/v2/busier' }) 'RateLimited'
+Check 'chyba se nepamatuje' "$((Invoke-Api $net '/v2/busier').n) $($script:calls.Count)" '15 15'
+$rateWindow = 8.0
+
+# Nepovinné dotazy (kam jede vozidlo) nechávají v okně limitu místo těm, bez kterých karta není.
+$limited = @{ Token = 'x'; Demo = $null; Cache = @{}; Limiter = New-Object System.Collections.Queue }
+1..12 | ForEach-Object { $limited.Limiter.Enqueue([DateTime]::UtcNow) }
+$before = $script:calls.Count
+Check 'nepovinný dotaz se při plnějším okně neodešle' "$(ErrorKind { Invoke-Api $limited '/v2/extra' @{} $cacheSlow -Optional }) $($script:calls.Count - $before)" 'Busy 0'
+$null = Invoke-Api $limited '/v2/needed'
+Check 'povinný dotaz projde' "$($script:calls.Count - $before) $($limited.Limiter.Count)" '1 13'
+$moving = Get-Vehicles $limited $lat $lng
+Check 'vozidla zatím bez cíle a s příznakem, že něco chybí' "$($moving.Pending) $(@($moving.Items | Where-Object Headsign).Count) $($script:calls.Count - $before)" 'True 0 2'
+$limited.Limiter.Clear()
+$moving = Get-Vehicles $limited $lat $lng
+Check 'cíle se doplní, polohy se znovu nestahují' "$($moving.Pending) $($moving.Items[0].Headsign) $($script:calls.Count - $before)" 'False cíl 991_11452_260202 6'
+$null = Get-Vehicles $limited $lat $lng
+Check 'potřetí už bez jediného dotazu' ($script:calls.Count - $before) 6
+Check 'ukázková data příznak nemají' (Get-Vehicles $demo $lat $lng).Pending $false
+
+# Sada, ke které klíč nesmí: pamatuje se i odmítnutí, jinak by se na ni aplikace ptala při každém obnovení.
+$before = $script:calls.Count
+Check 'bez přístupu' "$(ErrorKind { Invoke-Api $net '/v2/forbidden' }) $(ErrorKind { Invoke-Api $net '/v2/forbidden' }) $($script:calls.Count - $before)" 'Forbidden Forbidden 1'
+Age $memory ($cacheSlow + 1)
+Check 'po deseti minutách se zeptá znovu' "$(ErrorKind { Invoke-Api $net '/v2/forbidden' }) $($script:calls.Count - $before)" 'Forbidden 2'
+# Zpátky skutečné funkce a hodnoty.
+. (Join-Path $root 'Golemio.ps1')
+
 '--- nastavení'
 $found = @(Find-Address $demo 'náměstí Míru')
 Check 'nalezené adresy' $found.Count 3
@@ -323,12 +405,11 @@ try {
 
     # Kam spoj jede, je v samostatném dotazu; když selže, vozidlo se ukáže bez cíle.
     Remove-Item "$quirks\v2-public-gtfs-trips-22_1840_260901.json"
-    $global:GolemWatchCache = @{}
     $noTrip = (Get-Vehicles $alt $lat $lng).Items | Where-Object Route -eq '22'
     Check 'vozidlo bez popisu spoje' "$($noTrip.Headsign)|$($noTrip.State)" '|směr Z'
 
     # Klíč bez přístupu k velkoobjemovým kontejnerům: část se schová, není to chyba.
-    function Invoke-Api($context, [string]$path, $query = @{}) {
+    function Invoke-Api($context, [string]$path, $query = @{}, [int]$maxAge) {
         if ($path -eq '/v1/bulky-waste/stations') { throw (ConvertTo-ApiError 403) }
         Read-Demo $context.Demo $path
     }
@@ -349,9 +430,23 @@ try {
 
     # Bez číselníků ovzduší se ukážou holé kódy.
     Remove-Item "$quirks\v2-airqualitystations-componenttypes.json"
-    $global:GolemWatchCache = @{}
     $bare = Get-Air $alt $lat $lng
     Check 'bez číselníku: hodnota bez jednotky' $bare.Components[0].Value '38,4'
+
+    # S pamětí v kontextu se odpověď deset minut nečte znovu, ani když se mezitím změnila.
+    $kept = @{ Token = ''; Demo = $quirks; Cache = @{} }
+    $null = Get-Alerts $kept $lat $lng
+    [IO.File]::WriteAllText("$quirks\v3-pid-infotexts.json", '[]', $utf8)
+    Check 'mimořádnosti do deseti minut z paměti' (Get-Alerts $kept $lat $lng).Meta '3 v celé síti'
+    foreach ($key in @($kept.Cache.Keys)) { $kept.Cache[$key].At = $kept.Cache[$key].At.AddSeconds(-($cacheSlow + 1)) }
+    Check 'po deseti minutách nová odpověď' (Get-Alerts $kept $lat $lng).Empty 'PID teď žádnou mimořádnost nehlásí.'
+
+    # Nástupiště kolem místa se pamatují: podruhé se seznam zastávek nečte (tady už ani není z čeho).
+    $once = @(Find-Stops $kept $lat $lng)
+    Remove-Item "$quirks\v2-gtfs-stops.json"
+    Check 'zastávky podruhé z paměti' "$($once.Count) $(@(Find-Stops $kept $lat $lng).Count)" '5 5'
+    $kept.Options = @{ StopsRange = 300 }
+    Check 'jiný okruh se hledá znovu' (ErrorKind { Find-Stops $kept $lat $lng }) 'NotFound'
 } finally {
     Remove-Item $quirks -Recurse -Force
 }

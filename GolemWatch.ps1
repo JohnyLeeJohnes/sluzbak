@@ -10,7 +10,7 @@ param([switch]$Install, [switch]$Demo, [string]$SettingsPath, [string]$Screensho
 
 $ErrorActionPreference = 'Stop'
 # Číslo vydání. Musí sedět s nejnovější verzí v CHANGELOG.md (hlídá tests/unit.ps1), bere si ho tools/make-release.ps1.
-$version = '0.2.0'
+$version = '0.2.1'
 $icon = Join-Path $PSScriptRoot 'assets\golemwatch.ico'
 $library = Join-Path $PSScriptRoot 'Golemio.ps1'
 $demoDirectory = Join-Path $PSScriptRoot 'demo'
@@ -74,9 +74,10 @@ $pages = [ordered]@{
 $sections = @($pages.Values | ForEach-Object { $_ })
 # Sekce, kde jde o minuty, se obnovují s odjezdy; ostatním stačí jednou za deset minut.
 $live = 'Transit', 'Vehicles'
-$allEvery = [TimeSpan]::FromMinutes(10)
 # Sekce, která se nespojila, to zkusí znovu dřív než za deset minut.
 $retryEvery = [TimeSpan]::FromSeconds(30)
+# Sekce, která kvůli limitu API něco odložila (Pending), to zkusí, jakmile se okno limitu vyprázdní.
+$retrySoon = [TimeSpan]::FromSeconds($rateWindow + 1)
 
 # Číselné volby: nejmenší a největší povolená hodnota. Výchozí hodnoty jsou v $defaultOptions (Golemio.ps1),
 # v nastavení má každá pole <volba>Box.
@@ -120,7 +121,11 @@ function Get-Sections {
     $hidden = @((Get-Options).Hidden)
     $sections | Where-Object { $_ -notin $hidden }
 }
-function Get-TransitEvery { [TimeSpan]::FromSeconds((Get-Options).Refresh) }
+# Za jak dlouho se má sekce načíst znovu. Pomalé sekce drží krok s pamětí odpovědí v Golemio.ps1:
+# dřív by stejně dostaly jen to, co už mají.
+function Get-Every([string]$name) {
+    [TimeSpan]::FromSeconds($(if ($name -in $live) { (Get-Options).Refresh } else { $cacheSlow }))
+}
 
 # Co není číslo, se změní na výchozí hodnotu; číslo mimo meze na nejbližší povolené.
 function ConvertTo-Option([string]$name, $value) {
@@ -263,7 +268,7 @@ function Get-PageSections([string]$page) {
 
 function Start-Section([string]$name) {
     # Termín dalšího načtení se posune hned, ať se sekce nespouští při každém tiknutí časovače.
-    $state.Due[$name] = [DateTime]::UtcNow + $(if ($name -in $live) { Get-TransitEvery } else { $allEvery })
+    $state.Due[$name] = [DateTime]::UtcNow + (Get-Every $name)
     $generation = $state.Generation
     # Předchozí načítání téže sekce ještě běží.
     if ($jobs | Where-Object { $_.Key -eq $name -and $_.Generation -eq $generation }) { return }
@@ -299,6 +304,9 @@ function Complete-Section($job, $result) {
 
     $data = $result.Data
     if ($name -eq 'Transit') { $state.Stops = @($data.Stops) }
+    # Další obnovení se počítá od doručení dat, ne od spuštění: paměť odpovědí je tou dobou už jistě prošlá
+    # a obnovení opravdu přinese nová data. Sekce, která něco odložila kvůli limitu API, to zkusí hned po něm.
+    $state.Due[$name] = [DateTime]::UtcNow + $(if ($data.Pending) { $retrySoon } else { Get-Every $name })
     $state.Updated = [DateTime]::Now
     $ui["${name}Meta"].Text = [string]$data.Meta
     if ($data.Empty) { Show-State $name $data.Empty; return }
@@ -308,7 +316,8 @@ function Complete-Section($job, $result) {
     $ui["${name}Body"].Visibility = 'Visible'
 }
 
-# Obnovení, o které si řekl uživatel (tlačítko, F5): všechno na otevřené záložce hned.
+# Obnovení, o které si řekl uživatel (tlačítko, F5): projde všechno na otevřené záložce. Na síť se přitom
+# jde jen pro to, co už není čerstvé (viz paměť odpovědí v Golemio.ps1), takže mačkání F5 API nezatíží.
 function Update-Sections {
     $state.Manual = $true
     foreach ($name in @(Get-PageSections $state.Page)) { Start-Section $name }
@@ -534,6 +543,8 @@ function Complete-Save($job, $result) {
         Set-SetupStatus "Nastavení se nepodařilo uložit: $($_.Exception.Message)" -IsError
         return
     }
+    # Jiný klíč může mít k datům jiný přístup; co si paměť odpovědí pamatuje, patřilo tomu starému.
+    if ($state.Saved -and $state.Saved.Token -ne $job.Tag.Token) { $cache.Clear() }
     $state.Saved = $job.Tag
     $state.Trial = $false
     Show-Dashboard -Reload

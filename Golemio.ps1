@@ -4,7 +4,7 @@
 #
 # $context = @{ Token = '...'; Demo = $null; Limiter = $null; Cache = $null; Options = @{} }
 # S Demo = cesta ke složce se místo sítě čtou ukázkové soubory (viz Read-Demo).
-# Limiter je fronta pro hlídání limitu API (viz Wait-RateLimit), Cache společná paměť číselníků (viz Get-Cached),
+# Limiter je fronta pro hlídání limitu API (viz Wait-RateLimit), Cache společná paměť odpovědí (viz Invoke-Api),
 # Options volby uživatele (viz $defaultOptions).
 
 Add-Type -AssemblyName System.Net.Http, System.Web.Extensions
@@ -30,6 +30,7 @@ $pragueZone = [TimeZoneInfo]::FindSystemTimeZoneById('Central Europe Standard Ti
 
 # ---- Chyby ----
 # Chyba nese druh (Unauthorized, Forbidden, NotFound, RateLimited, Network, Unexpected) a českou hlášku pro uživatele.
+# Druh Busy ven z datové vrstvy nejde: znamená odložený nepovinný dotaz (viz Invoke-Api).
 
 function New-ApiError([string]$kind, [string]$message) {
     $exception = [Exception]::new($message)
@@ -135,6 +136,8 @@ function Read-Demo([string]$directory, [string]$name) {
 # Golemio dovolí 20 dotazů za 8 sekund na jeden klíč; dva si necháváme v rezervě.
 $rateLimit = 18
 $rateWindow = 8.0
+# Dotazy, bez kterých se karta obejde (kam jede vozidlo), nechávají tolik míst v okně volných pro ty podstatné.
+$rateReserve = 6
 
 # Sekce se načítají souběžně v několika vláknech, takže si časy odeslaných dotazů hlídají ve společné frontě
 # ($context.Limiter, System.Collections.Queue). Když je okno plné, počká se, až nejstarší dotaz vypadne.
@@ -156,31 +159,94 @@ function Wait-RateLimit($limiter) {
     }
 }
 
-function Invoke-Api($context, [string]$path, $query = @{}) {
-    if ($context.Demo) { return Read-Demo $context.Demo $path }
-    Wait-RateLimit $context.Limiter
-    Invoke-Http ('https://api.golemio.cz' + $path + (Format-Query $query)) $context.Token 'Golemio'
+# Je v okně limitu místo i na dotaz, bez kterého se karta obejde? Kdyby takové dotazy okno zaplnily,
+# čekaly by za nimi odjezdy.
+function Test-RateRoom($limiter) {
+    if ($null -eq $limiter) { return $true }
+    [Threading.Monitor]::Enter($limiter.SyncRoot)
+    try {
+        $now = [DateTime]::UtcNow
+        while ($limiter.Count -gt 0 -and ($now - $limiter.Peek()).TotalSeconds -ge $rateWindow) { $null = $limiter.Dequeue() }
+        $limiter.Count -lt $rateLimit - $rateReserve
+    } finally { [Threading.Monitor]::Exit($limiter.SyncRoot) }
 }
 
-# Číselníky a popisy spojů se za běhu nemění; stačí je stáhnout jednou. Okno dává všem úlohám společnou
-# paměť ($context.Cache, synchronizovaná tabulka), jinak by si každé vlákno stahovalo totéž znovu.
-function Get-Cached($context, [string]$path, $query = @{}) {
+# ---- Paměť odpovědí ----
+# Jak dlouho (v sekundách) se smí odpověď použít znovu, než se pro ni jde na síť. Šetří to API i limit dotazů:
+# ruční obnovení, uložení nastavení ani návrat na záložku nestahují nic, co je ještě čerstvé.
+$cacheSlow = 600                  # měření, svozy, obsazenost, místa: nejvýš jeden dotaz za 10 minut
+$cacheLive = 10                   # odjezdy a polohy vozidel; jen brzda proti opakovanému F5
+$cacheStatic = [int]::MaxValue    # číselníky, popisy spojů a zastávky kolem místa se za běhu nemění
+
+# Paměť je tabulka v $context.Cache, kterou okno dává všem úlohám společnou. Bez ní se nepamatuje nic
+# (testy, ověření klíče). Je jen v paměti procesu: na disk se nic neukládá a se zavřením aplikace zmizí.
+function Get-CacheEntry($context, [string]$key, [int]$maxAge) {
     $cache = $context.Cache
-    if ($null -eq $cache) {
-        if (-not $global:GolemWatchCache) { $global:GolemWatchCache = @{} }
-        $cache = $global:GolemWatchCache
-    }
-    $key = "$($context.Demo)|$path"
-    if (-not $cache.ContainsKey($key)) {
-        $value = Invoke-Api $context $path $query
-        # Popisy spojů přibývají celý den; občasné vymazání udrží paměť malou.
+    if ($null -eq $cache -or $maxAge -le 0) { return }
+    # Stejný proces umí ukázková i skutečná data, proto je v klíči i složka ukázky.
+    $entry = $cache["$($context.Demo)|$key"]
+    if ($entry -and ([DateTime]::UtcNow - $entry.At).TotalSeconds -lt $maxAge) { $entry }
+}
+
+function Set-CacheEntry($context, [string]$key, $data, [int]$maxAge) {
+    $cache = $context.Cache
+    if ($null -eq $cache -or $maxAge -le 0) { return }
+    [Threading.Monitor]::Enter($cache.SyncRoot)
+    try {
+        $now = [DateTime]::UtcNow
+        # Úklid prošlého: dotazy s časem v adrese mají každou hodinu jiný klíč a staré by tu zůstávaly ležet.
+        foreach ($old in @($cache.Keys | Where-Object { ($now - $cache[$_].At).TotalSeconds -ge $cache[$_].MaxAge })) { $cache.Remove($old) }
+        # Popisy spojů neprojdou nikdy a přibývají celý den; občasné vymazání udrží paměť malou.
         if ($cache.Count -ge 500) { $cache.Clear() }
-        $cache[$key] = $value
+        $cache["$($context.Demo)|$key"] = @{ At = $now; MaxAge = $maxAge; Data = $data }
+    } finally { [Threading.Monitor]::Exit($cache.SyncRoot) }
+}
+
+# $maxAge říká, jak starou odpověď z paměti lze ještě použít; 0 = pokaždé na síť (ověření klíče).
+# S -Optional se dotaz při zaplněném limitu vůbec neodešle a skončí chybou druhu Busy: volající se bez
+# odpovědi obejde a zkusí to později.
+function Invoke-Api($context, [string]$path, $query = @{}, [int]$maxAge = $cacheSlow, [switch]$Optional) {
+    $key = $path + (Format-Query $query)
+    $hit = Get-CacheEntry $context $key $maxAge
+    if ($hit) {
+        if ($hit.Data -is [Exception]) { throw $hit.Data }
+        return $hit.Data
     }
-    $cache[$key]
+
+    if ($context.Demo) { $data = Read-Demo $context.Demo $path }
+    else {
+        if ($Optional -and -not (Test-RateRoom $context.Limiter)) { throw (New-ApiError 'Busy' 'Na tenhle dotaz teď není v limitu místo.') }
+        $uri = 'https://api.golemio.cz' + $key
+        Wait-RateLimit $context.Limiter
+        try { $data = Invoke-Http $uri $context.Token 'Golemio' }
+        catch {
+            # Klíč, který k datové sadě nesmí, se sám nespraví. Pamatuje se i odmítnutí, ať se neptáme pořád dokola.
+            if ($_.Exception.Data['Kind'] -eq 'Forbidden') { Set-CacheEntry $context $key $_.Exception $maxAge }
+            if ($_.Exception.Data['Kind'] -ne 'RateLimited') { throw }
+            # Limit platí na klíč, ne na proces: vyčerpat ho mohl i jiný program se stejným klíčem.
+            # Po celém okně limitu se to zkusí ještě jednou; teprve pak je to chyba.
+            Start-Sleep -Milliseconds ([int]($rateWindow * 1000))
+            Wait-RateLimit $context.Limiter
+            $data = Invoke-Http $uri $context.Token 'Golemio'
+        }
+    }
+    Set-CacheEntry $context $key $data $maxAge
+    $data
+}
+
+# Číselníky a popisy spojů se za běhu nemění; stačí je stáhnout jednou.
+function Get-Cached($context, [string]$path, $query = @{}, [switch]$Optional) {
+    Invoke-Api $context $path $query $cacheStatic -Optional:$Optional
 }
 
 function Format-Utc([DateTime]$time) { $time.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", $invariant) }
+
+# Začátek hodiny před tolika hodinami. Čas v dotazu zaokrouhlený na celé hodiny drží adresu dotazu stejnou,
+# takže se odpověď dá vzít z paměti; že je pak okno o necelou hodinu delší, ničemu nevadí.
+function Get-HoursAgo([double]$hours) {
+    $time = [DateTime]::UtcNow.AddHours(-$hours)
+    $time.Date.AddHours($time.Hour)
+}
 
 # Světová strana, kam míří azimut ve stupních: 0 = S, 90 = V.
 function Format-Compass($bearing) {
@@ -360,7 +426,7 @@ function Get-Air($context, [double]$latitude, [double]$longitude) {
     # jsou v historii: jeden dotaz na všechny stanice, ať se nemusí zkoušet jedna po druhé.
     $newest = @{}
     try {
-        $history = Invoke-Api $context '/v2/airqualitystations/history' ([ordered]@{ from = Format-Utc ([DateTime]::UtcNow.AddHours(-$airFreshHours)) })
+        $history = Invoke-Api $context '/v2/airqualitystations/history' ([ordered]@{ from = Format-Utc (Get-HoursAgo $airFreshHours) })
         foreach ($row in @($history)) {
             $time = if ($row) { ConvertTo-PragueTime $row.updated_at }
             if ($time -and $row.id -and (-not $newest[[string]$row.id] -or $time -gt $newest[[string]$row.id].Time)) {
@@ -456,7 +522,7 @@ function Get-Microclimate($context, [double]$latitude, [double]$longitude) {
 
     # Jeden dotaz na všechny senzory: nejbližší často mlčí a zkoušet je po jednom by stálo dotaz za každý.
     $measured = @{}
-    foreach ($row in @(Invoke-Api $context '/v2/microclimate/measurements' ([ordered]@{ from = Format-Utc ([DateTime]::UtcNow.AddHours(-$microclimateHours)) }))) {
+    foreach ($row in @(Invoke-Api $context '/v2/microclimate/measurements' ([ordered]@{ from = Format-Utc (Get-HoursAgo $microclimateHours) }))) {
         if (-not $row -or -not $row.measure -or $null -eq $row.value) { continue }
         $key = [string]$row.point_id
         if (-not $measured.ContainsKey($key)) { $measured[$key] = New-Object System.Collections.ArrayList }
@@ -577,9 +643,14 @@ $metroColors = @{ A = '#00A562'; B = '#F8B322'; C = '#CF003D'; D = '#008BBE' }
 function Find-Stops($context, [double]$latitude, [double]$longitude) {
     $pageSize = 10000
     $range = Get-Option $context 'StopsRange'
+    # Pamatuje se jen výsledek pro tohle místo a okruh. Stránky seznamu ne: mají desítky megabajtů.
+    $key = "stops|$(Format-LatLng $latitude $longitude)|$range"
+    $hit = Get-CacheEntry $context $key $cacheStatic
+    if ($hit) { return $hit.Data }
+
     $near = New-Object System.Collections.ArrayList
     for ($offset = 0; ; $offset += $pageSize) {
-        $page = Invoke-Api $context '/v2/gtfs/stops' ([ordered]@{ limit = $pageSize; offset = $offset })
+        $page = Invoke-Api $context '/v2/gtfs/stops' ([ordered]@{ limit = $pageSize; offset = $offset }) 0
         foreach ($stop in (Get-Features $page $latitude $longitude)) {
             $p = $stop.Properties
             # location_type 0 je nástupiště; stanice, vstupy a další uzly odjezdy nemají.
@@ -597,7 +668,9 @@ function Find-Stops($context, [double]$latitude, [double]$longitude) {
     # Celý seznam zastávek zabere desítky megabajtů; bez úklidu by si je proces držel ještě dlouho.
     $page = $null
     [GC]::Collect()
-    @($near | Sort-Object Meters | Select-Object -First 10)
+    $found = @($near | Sort-Object Meters | Select-Object -First 10)
+    Set-CacheEntry $context $key $found $cacheStatic
+    $found
 }
 
 function Get-RouteColor($type, [string]$route) {
@@ -617,7 +690,7 @@ function Get-Transit($context, [double]$latitude, [double]$longitude, $stops) {
     $count = Get-Option $context 'Departures'
     $board = Invoke-Api $context '/v2/pid/departureboards' ([ordered]@{
         'ids[]' = @($stops | ForEach-Object Id); minutesAfter = 90; limit = $count
-    })
+    }) $cacheLive
 
     $names = @{}
     foreach ($stop in $stops) { $names[$stop.Id] = $stop }
@@ -670,33 +743,40 @@ $routeTypes = @{ tram = 0; metro = 1; train = 2; bus = 3; ferry = 4; funicular =
 $vehicleRange = 1000
 
 function Get-Vehicles($context, [double]$latitude, [double]$longitude) {
-    $positions = Invoke-Api $context '/v2/public/vehiclepositions' ([ordered]@{ boundingBox = Get-BoundingBox $latitude $longitude $vehicleRange })
+    $positions = Invoke-Api $context '/v2/public/vehiclepositions' ([ordered]@{ boundingBox = Get-BoundingBox $latitude $longitude $vehicleRange }) $cacheLive
     $near = @(Get-Features $positions $latitude $longitude | Where-Object { $_.Distance -le $vehicleRange } | Sort-Object { $_.Distance })
     if (-not $near) { return [pscustomobject]@{ Meta = ''; Empty = "Do $(Format-Distance $vehicleRange) teď žádný spoj MHD nejede." } }
 
+    $pending = $false
+    $items = @($near | Select-Object -First 8 | ForEach-Object {
+        $vehicle = $_
+        $p = $vehicle.Properties
+        $route = [string]$p.gtfs_route_short_name
+        # Kam spoj jede, v polohách není. Dotáže se jednou na každý spoj a pak už se bere z paměti.
+        # Je to dotaz navíc za každé vozidlo: když je limit skoro plný, cíl se doplní až příště.
+        $headsign = ''
+        if ($p.gtfs_trip_id) {
+            try { $headsign = [string](Get-Cached $context "/v2/public/gtfs/trips/$($p.gtfs_trip_id)" ([ordered]@{ 'scopes[]' = 'info' }) -Optional).trip_headsign }
+            catch { if ($_.Exception.Data['Kind'] -eq 'Busy') { $pending = $true } }
+        }
+        $delay = if ($null -ne $p.delay) { [int][Math]::Round([double]$p.delay / 60) } else { 0 }
+        $color = Get-RouteColor ($routeTypes[[string]$p.route_type]) $route
+        [pscustomobject]@{
+            Route = $route
+            Color = $color
+            RouteTextColor = if ($color -eq $metroColors.B) { '#1F1405' } else { '#FFFFFF' }
+            Headsign = $headsign
+            State = if ($p.state_position -eq 'at_stop') { 'v zastávce' } else { (('směr ' + (Format-Compass $p.bearing)) -replace '^směr $') }
+            Delay = if ($delay -ge 1) { "+$delay min" } else { '' }
+            Distance = Format-Distance $vehicle.Distance
+        }
+    })
+
     [pscustomobject]@{
         Meta = "$($near.Count) do $(Format-Distance $vehicleRange)"
-        Items = @($near | Select-Object -First 8 | ForEach-Object {
-            $vehicle = $_
-            $p = $vehicle.Properties
-            $route = [string]$p.gtfs_route_short_name
-            # Kam spoj jede, v polohách není. Dotáže se jednou na každý spoj a pak už se bere z paměti.
-            $headsign = ''
-            if ($p.gtfs_trip_id) {
-                try { $headsign = [string](Get-Cached $context "/v2/public/gtfs/trips/$($p.gtfs_trip_id)" ([ordered]@{ 'scopes[]' = 'info' })).trip_headsign } catch { }
-            }
-            $delay = if ($null -ne $p.delay) { [int][Math]::Round([double]$p.delay / 60) } else { 0 }
-            $color = Get-RouteColor ($routeTypes[[string]$p.route_type]) $route
-            [pscustomobject]@{
-                Route = $route
-                Color = $color
-                RouteTextColor = if ($color -eq $metroColors.B) { '#1F1405' } else { '#FFFFFF' }
-                Headsign = $headsign
-                State = if ($p.state_position -eq 'at_stop') { 'v zastávce' } else { (('směr ' + (Format-Compass $p.bearing)) -replace '^směr $') }
-                Delay = if ($delay -ge 1) { "+$delay min" } else { '' }
-                Distance = Format-Distance $vehicle.Distance
-            }
-        })
+        Items = $items
+        # Něco se odložilo; okno má sekci načíst znovu dřív než při běžném obnovení.
+        Pending = $pending
         Empty = ''
     }
 }
@@ -816,7 +896,7 @@ function Test-InRing($ring, [double]$latitude, [double]$longitude) {
 
 # Jméno městské části, ve které místo leží; nic, když je mimo Prahu.
 function Get-District($context, [double]$latitude, [double]$longitude) {
-    $districts = Invoke-Api $context '/v2/citydistricts' ([ordered]@{ latlng = Format-LatLng $latitude $longitude; limit = 4 })
+    $districts = Invoke-Api $context '/v2/citydistricts' ([ordered]@{ latlng = Format-LatLng $latitude $longitude; limit = 4 }) $cacheStatic
     foreach ($feature in @($districts.features)) {
         if (-not $feature -or -not $feature.geometry) { continue }
         # Polygon má vnější obrys v coordinates[0], MultiPolygon má takových částí víc.
@@ -952,7 +1032,8 @@ function Get-Nearby($context, [double]$latitude, [double]$longitude) {
 
 # Projde, když Golemio klíč přijme; jinak vyhodí chybu.
 function Test-Token($context) {
-    $null = Invoke-Api $context '/v2/airqualitystations/indextypes'
+    # Nula: klíč se musí ověřit na síti, ne proti odpovědi z paměti.
+    $null = Invoke-Api $context '/v2/airqualitystations/indextypes' @{} 0
     $true
 }
 

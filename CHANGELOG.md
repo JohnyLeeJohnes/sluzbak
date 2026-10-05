@@ -3,6 +3,24 @@
 Všechny podstatné změny v projektu. Formát vychází z [Keep a Changelog](https://keepachangelog.com/cs/1.1.0/),
 verze se řídí [sémantickým verzováním](https://semver.org/lang/cs/).
 
+## [0.2.1] - 2026-10-05
+
+### Změněno
+
+- Aplikace si odpovědi z Golemia pamatuje a neptá se na ně zbytečně: měření, svozy, obsazenost a místa
+  10 minut, odjezdy a polohy vozidel 10 sekund, číselníky a zastávky kolem místa po celou dobu běhu.
+  Tlačítko **Obnovit**, F5, přepínání záložek ani uložení nastavení tak nestahují znovu, co je čerstvé.
+  Paměť je jen v běžící aplikaci; na disk se dál nic neukládá.
+- Kam vozidla jedou, se při startu doplní o pár sekund později, aby na tyhle dotazy nečekaly odjezdy
+  a ostatní karty.
+- Pravidelné obnovení karty se počítá od chvíle, kdy data dorazila.
+
+### Opraveno
+
+- Když Golemio dotaz odmítne kvůli limitu, aplikace počká a zkusí to znovu sama; dřív karta ukázala chybu.
+- Na datové sady, ke kterým klíč nemá přístup, se aplikace neptá při každém obnovení.
+- Uložení nastavení beze změny místa už znovu nestahuje celý seznam zastávek.
+
 ## [0.2.0] - 2026-10-05
 
 Poprvé vyzkoušeno se skutečným klíčem; z toho většina změn níž.
@@ -87,5 +105,6 @@ První vydání. Číslo začíná nulou, protože aplikace ještě neběžela s
 - Aplikace zatím neběžela proti skutečným datům z Golemia, jen proti ukázkovým odpovědím sestaveným podle
   specifikace API.
 
+[0.2.1]: https://github.com/JohnyLeeJohnes/GolemWatch/releases/tag/v0.2.1
 [0.2.0]: https://github.com/JohnyLeeJohnes/GolemWatch/releases/tag/v0.2.0
 [0.1.0]: https://github.com/JohnyLeeJohnes/GolemWatch/releases/tag/v0.1.0

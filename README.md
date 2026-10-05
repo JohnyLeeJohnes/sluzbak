@@ -54,9 +54,10 @@ Přehled má dvě záložky, obě se vejdou do okna bez posouvání. Pod názvem
 Vzdálenosti v tabulkách jsou výchozí; okruh pro zastávky, tříděný odpad a parkoviště si v nastavení změníš,
 stejně jako to, které karty chceš vidět. Záložka, na které nenecháš žádnou kartu, zmizí.
 
-Odjezdy a vozidla se obnovují každých 30 sekund (jde změnit), všechno ostatní každých 10 minut. Hned to jde
-tlačítkem **Obnovit** nebo klávesou F5. Stahuje se jen záložka, na kterou se díváš; minimalizované okno
-nestahuje nic a po návratu se obnoví hned.
+Odjezdy a vozidla se obnovují každých 30 sekund (jde změnit), všechno ostatní každých 10 minut. Tlačítko
+**Obnovit** a klávesa F5 načtou hned odjezdy a vozidla; ostatní odpovědi si aplikace 10 minut pamatuje
+a dřív se pro ně na síť nejde. Stahuje se jen záložka, na kterou se díváš; minimalizované okno nestahuje nic
+a po návratu se obnoví hned.
 
 ## Instalace
 
@@ -109,9 +110,14 @@ v přehledu.
 - **Kde je nastavení.** V `%APPDATA%\GolemWatch\settings.json`: klíč, název místa, souřadnice a volby. Klíč
   šifruje Windows (DPAPI), takže ho přečte jen tvůj účet na tomhle počítači. Na jiném počítači ho zadáš znovu.
   Dočasná složka (`%TEMP%`) by nestačila: Windows ji při úklidu maže a aplikace by nastavení zapomněla.
-- **Limit API.** Golemio dovoluje 20 dotazů za 8 sekund na jeden klíč. První načtení záložky Doprava jich
-  potřebuje i víc, takže poslední karty naskočí o pár sekund později; obnovení odjezdů je pak jeden dotaz.
-  Aplikace si dotazy počítá a když by limit překročila, chvilku počká.
+- **Šetří API.** Golemio dovoluje 20 dotazů za 8 sekund na jeden klíč. Aplikace si dotazy počítá a když by
+  limit překročila, chvilku počká. Hlavně se ale neptá zbytečně: odpovědi si pamatuje (měření, svozy,
+  obsazenost a místa 10 minut, odjezdy a polohy vozidel 10 sekund, číselníky a zastávky kolem tebe po celou
+  dobu běhu). Mačkání **Obnovit**, přepínání záložek ani uložení nastavení tak nic nestahují znovu. První
+  načtení obou záložek je kolem 34 dotazů, opakované do deseti minut žádný až tři. Paměť je jen v běžící
+  aplikaci, na disk se nic neukládá.
+- **Kam vozidla jedou, naskočí o chvilku později.** Cíl každého vozidla je dotaz navíc. Při startu se proto
+  nejdřív načtou odjezdy a ostatní karty a cíle se doplní zhruba po devíti sekundách.
 - **Co běžný klíč nesmí.** K některým datům Golemio pouští jen na požádání (`golemio@operatorict.cz`). Klíč
   z registrace neprošel (zkoušeno 5. 10. 2026) k velkoobjemovým kontejnerům, sdíleným kolům, dopravním
   omezením, intenzitě dopravy, sčítačům chodců, hlášení závad ani k energetice. Velkoobjemové kontejnery
