@@ -1,0 +1,37 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [14.4305, 50.0724]},
+      "properties": {
+        "id": "ALEGA", "name": "Praha 2-Legerova", "district": "praha-2", "updated_at": "{{now-25}}",
+        "measurement": {
+          "AQ_hourly_index": "1B",
+          "components": [
+            {"type": "NO2", "averaged_time": {"averaged_hours": 1, "value": 38.4}},
+            {"type": "PM10", "averaged_time": {"averaged_hours": 1, "value": 21.0}},
+            {"type": "PM10", "averaged_time": {"averaged_hours": 24, "value": 18.6}},
+            {"type": "PM2_5", "averaged_time": {"averaged_hours": 1, "value": 11.2}},
+            {"type": "O3", "averaged_time": {"averaged_hours": 1, "value": 44.7}},
+            {"type": "SO2", "averaged_time": {"averaged_hours": 1, "value": null}}
+          ]
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [14.4427, 50.081]},
+      "properties": {
+        "id": "ARIEA", "name": "Praha 2-Riegrovy sady", "district": "praha-2", "updated_at": "{{now-25}}",
+        "measurement": {
+          "AQ_hourly_index": "1A",
+          "components": [
+            {"type": "NO2", "averaged_time": {"averaged_hours": 1, "value": 14.9}},
+            {"type": "O3", "averaged_time": {"averaged_hours": 1, "value": 58.1}}
+          ]
+        }
+      }
+    }
+  ]
+}

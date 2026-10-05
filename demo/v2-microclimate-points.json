@@ -1,0 +1,18 @@
+[
+  {
+    "point_id": 131, "location_id": 130, "point_named": "Pražská tržnice osvětlení", "location": "Pražská Holešovická tržnice",
+    "loc_description": "areál bez zeleně", "lat": 50.098934, "lng": 14.445023, "elevation_m": 184.3,
+    "measures": [{"measure": "air_temp200", "measure_cz": "Teplota vzduchu, 200 cm", "unit": "°C"}]
+  },
+  {
+    "point_id": 207, "location_id": 200, "point_named": "Náměstí Jiřího z Poděbrad", "location": "Vinohrady",
+    "loc_description": "náměstí se vzrostlými stromy", "lat": 50.0779, "lng": 14.45, "elevation_m": 262.1,
+    "measures": [
+      {"measure": "air_temp200", "measure_cz": "Teplota vzduchu", "unit": "°C"},
+      {"measure": "air_hum200", "measure_cz": "Vlhkost vzduchu", "unit": "%"},
+      {"measure": "pressure", "measure_cz": "Tlak vzduchu", "unit": "hPa"},
+      {"measure": "wind_speed_avg", "measure_cz": "Rychlost větru", "unit": "km/h"},
+      {"measure": "precip", "measure_cz": "Srážky", "unit": "mm"}
+    ]
+  }
+]

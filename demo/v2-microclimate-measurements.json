@@ -1,0 +1,8 @@
+[
+  {"point_id": 207, "location_id": 200, "measured_at": "{{now-25}}", "measure": "air_temp200", "value": 13.9, "unit": "°C"},
+  {"point_id": 207, "location_id": 200, "measured_at": "{{now-10}}", "measure": "air_temp200", "value": 14.2, "unit": "°C"},
+  {"point_id": 207, "location_id": 200, "measured_at": "{{now-10}}", "measure": "air_hum200", "value": 71, "unit": "%"},
+  {"point_id": 207, "location_id": 200, "measured_at": "{{now-10}}", "measure": "pressure", "value": 1016.4, "unit": "hPa"},
+  {"point_id": 207, "location_id": 200, "measured_at": "{{now-10}}", "measure": "wind_speed_avg", "value": 9.3, "unit": "km/h"},
+  {"point_id": 207, "location_id": 200, "measured_at": "{{now-10}}", "measure": "precip", "value": 0, "unit": "mm"}
+]

@@ -1,0 +1,45 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "Polygon", "coordinates": [[[14.4436, 50.0776], [14.4444, 50.0776], [14.4444, 50.0781], [14.4436, 50.0776]]]},
+      "properties": {
+        "id": "demo-vinohradska-trznice", "primary_source": "tsk_v2", "name": "Garáže Vinohradská tržnice", "capacity": 180,
+        "centroid": {"type": "Point", "coordinates": [14.444, 50.0778]},
+        "parking_type": "underground", "parking_policy": "commercial", "has_occupancy_info": true,
+        "address": {"address_formatted": "Vinohradská 1200/50, 120 00 Praha 2"}
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Polygon", "coordinates": [[[14.4346, 50.0828], [14.4356, 50.0828], [14.4356, 50.0834], [14.4346, 50.0828]]]},
+      "properties": {
+        "id": "demo-hlavni-nadrazi", "primary_source": "tsk_v2", "name": "Parkoviště Hlavní nádraží", "capacity": 420,
+        "centroid": {"type": "Point", "coordinates": [14.435, 50.083]},
+        "parking_type": "multi_storey", "parking_policy": "commercial", "has_occupancy_info": true,
+        "address": {"address_formatted": "Wilsonova 300/8, 120 00 Praha 2"}
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Polygon", "coordinates": [[[14.4298, 50.0752], [14.4306, 50.0752], [14.4306, 50.0757], [14.4298, 50.0752]]]},
+      "properties": {
+        "id": "demo-ip-pavlova", "primary_source": "osm", "name": null, "capacity": 64,
+        "centroid": null,
+        "parking_type": "surface", "parking_policy": "customer_only", "has_occupancy_info": false,
+        "address": {"address_formatted": "Sokolská 1605/66, Praha 2"}
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Polygon", "coordinates": [[[14.4478, 50.0717], [14.4486, 50.0717], [14.4486, 50.0722], [14.4478, 50.0717]]]},
+      "properties": {
+        "id": "demo-grebovka", "primary_source": "osm", "name": "Parkoviště Grébovka", "capacity": null,
+        "centroid": {"type": "Point", "coordinates": [14.4482, 50.0719]},
+        "parking_type": "surface", "parking_policy": null, "has_occupancy_info": false,
+        "address": null
+      }
+    }
+  ]
+}

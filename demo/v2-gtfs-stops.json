@@ -1,0 +1,21 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [14.4372, 50.0753]},
+     "properties": {"stop_id": "U476Z101P", "stop_name": "Náměstí Míru", "platform_code": "1", "location_type": 0, "parent_station": "U476S1", "zone_id": "P", "wheelchair_boarding": 1, "level_id": "U476L2"}},
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [14.4374, 50.0752]},
+     "properties": {"stop_id": "U476Z102P", "stop_name": "Náměstí Míru", "platform_code": "2", "location_type": 0, "parent_station": "U476S1", "zone_id": "P", "wheelchair_boarding": 1, "level_id": "U476L2"}},
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [14.4383, 50.0757]},
+     "properties": {"stop_id": "U476Z1P", "stop_name": "Náměstí Míru", "platform_code": "A", "location_type": 0, "parent_station": null, "zone_id": "P", "wheelchair_boarding": 1, "level_id": null}},
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [14.4369, 50.0756]},
+     "properties": {"stop_id": "U476Z2P", "stop_name": "Náměstí Míru", "platform_code": "B", "location_type": 0, "parent_station": null, "zone_id": "P", "wheelchair_boarding": 1, "level_id": null}},
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [14.4423, 50.0766]},
+     "properties": {"stop_id": "U689Z1P", "stop_name": "Šumavská", "platform_code": "A", "location_type": 0, "parent_station": null, "zone_id": "P", "wheelchair_boarding": 1, "level_id": null}},
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [14.4373, 50.0753]},
+     "properties": {"stop_id": "U476S1", "stop_name": "Náměstí Míru", "platform_code": null, "location_type": 1, "parent_station": null, "zone_id": "P", "wheelchair_boarding": 1, "level_id": null}},
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [14.4605, 50.0782]},
+     "properties": {"stop_id": "U118Z101P", "stop_name": "Flora", "platform_code": "1", "location_type": 0, "parent_station": "U118S1", "zone_id": "P", "wheelchair_boarding": 1, "level_id": "U118L2"}},
+    {"type": "Feature", "geometry": null,
+     "properties": {"stop_id": "U000Z0", "stop_name": "Bez polohy", "platform_code": null, "location_type": 0, "parent_station": null, "zone_id": "P", "wheelchair_boarding": 0, "level_id": null}}
+  ]
+}

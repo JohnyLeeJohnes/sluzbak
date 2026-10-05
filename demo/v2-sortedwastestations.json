@@ -1,0 +1,55 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [14.4386, 50.0758]},
+      "properties": {
+        "id": 4101, "ksnko_id": 4101, "name": "Náměstí Míru 820/9", "station_number": "0002/ 101", "district": "praha-2",
+        "accessibility": {"id": 1, "description": "volně"}, "is_monitored": true, "updated_at": "{{now-180}}",
+        "containers": [
+          {"ksnko_id": 15301, "container_type": "1100 L normální - HV", "trash_type": {"id": 5, "description": "Papír"},
+           "cleaning_frequency": {"id": 13, "duration": "P1W", "frequency": 3, "pick_days": "Po, St, Pá", "next_pick": "{{day+1}}"},
+           "last_measurement": {"measured_at_utc": "{{now-40}}", "percent_calculated": 62, "prediction_utc": null},
+           "last_pick": "{{now-2800}}", "is_monitored": true},
+          {"ksnko_id": 15302, "container_type": "1100 L normální - HV", "trash_type": {"id": 5, "description": "Papír"},
+           "cleaning_frequency": {"id": 13, "duration": "P1W", "frequency": 3, "pick_days": "Po, St, Pá", "next_pick": "{{day+1}}"},
+           "last_measurement": {"measured_at_utc": "{{now-40}}", "percent_calculated": 48, "prediction_utc": null},
+           "last_pick": "{{now-2800}}", "is_monitored": true},
+          {"ksnko_id": 15303, "container_type": "1100 L normální - HV", "trash_type": {"id": 6, "description": "Plast"},
+           "cleaning_frequency": {"id": 13, "duration": "P1W", "frequency": 3, "pick_days": "Út, Čt, So", "next_pick": "{{day+0}}"},
+           "last_measurement": {"measured_at_utc": "{{now-40}}", "percent_calculated": 91, "prediction_utc": null},
+           "last_pick": "{{now-2800}}", "is_monitored": true},
+          {"ksnko_id": 15304, "container_type": "1500 L zvon - SV", "trash_type": {"id": 1, "description": "Barevné sklo"},
+           "cleaning_frequency": {"id": 41, "duration": "P4W", "frequency": 1, "pick_days": "St", "next_pick": "{{day+9}}"},
+           "last_measurement": null, "last_pick": null, "is_monitored": false},
+          {"ksnko_id": 15305, "container_type": "240 L normální - SV", "trash_type": {"id": 4, "description": "Nápojové kartóny"},
+           "cleaning_frequency": {"id": 21, "duration": "P2W", "frequency": 1, "pick_days": "Čt", "next_pick": "{{day+3}}"},
+           "last_measurement": null, "last_pick": null, "is_monitored": false}
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [14.4409, 50.0741]},
+      "properties": {
+        "id": 4102, "ksnko_id": 4102, "name": "Americká 579/17", "station_number": "0002/ 102", "district": "praha-2",
+        "accessibility": {"id": 1, "description": "volně"}, "is_monitored": false, "updated_at": "{{now-180}}",
+        "containers": [
+          {"ksnko_id": 15311, "container_type": "1100 L normální - HV", "trash_type": {"id": 5, "description": "Papír"},
+           "cleaning_frequency": {"id": 12, "duration": "P1W", "frequency": 2, "pick_days": "Út, Pá", "next_pick": "{{day+2}}"},
+           "last_measurement": null, "last_pick": null, "is_monitored": false},
+          {"ksnko_id": 15312, "container_type": "1100 L normální - HV", "trash_type": {"id": 6, "description": "Plast"},
+           "cleaning_frequency": {"id": 12, "duration": "P1W", "frequency": 2, "pick_days": "Po, Čt", "next_pick": "{{day+1}}"},
+           "last_measurement": null, "last_pick": null, "is_monitored": false},
+          {"ksnko_id": 15313, "container_type": "1500 L zvon - SV", "trash_type": {"id": 7, "description": "Čiré sklo"},
+           "cleaning_frequency": {"id": 41, "duration": "P4W", "frequency": 1, "pick_days": "St", "next_pick": "{{day+16}}"},
+           "last_measurement": null, "last_pick": null, "is_monitored": false},
+          {"ksnko_id": 15314, "container_type": "240 L normální - SV", "trash_type": {"id": 3, "description": "Kovy"},
+           "cleaning_frequency": {"id": 21, "duration": "P2W", "frequency": 1, "pick_days": "Pá", "next_pick": "{{day+4}}"},
+           "last_measurement": null, "last_pick": null, "is_monitored": false}
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [14.4447, 50.0749]},
+      "properties": {"customId": "demo-1", "date": "{{day+2}}", "timeFrom": "14:00:00", "timeTo": "18:00:00",
+        "street": "Budečská × Francouzská", "serviceName": "VOK", "payer": "municipality", "numberOfContainers": 1, "cityDistrict": "praha-2"}
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [14.4332, 50.0737]},
+      "properties": {"customId": "demo-2", "date": "{{day+9}}", "timeFrom": "09:00:00", "timeTo": "13:00:00",
+        "street": "Lublaňská × Rumunská", "serviceName": "VOK", "payer": "municipality", "numberOfContainers": 1, "cityDistrict": "praha-2"}
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [14.4379, 50.0915]},
+      "properties": {"customId": "demo-far", "date": "{{day+1}}", "timeFrom": "09:00:00", "timeTo": "13:00:00",
+        "street": "Daleká 1", "serviceName": "VOK", "payer": "municipality", "numberOfContainers": 1, "cityDistrict": "praha-8"}
+    }
+  ]
+}

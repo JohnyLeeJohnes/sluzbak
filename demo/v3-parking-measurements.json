@@ -1,0 +1,4 @@
+[
+  {"parking_id": "demo-vinohradska-trznice", "primary_source": "tsk_v2", "primary_source_id": "VT", "has_free_spots": true, "total_spot_number": 180, "free_spot_number": 47, "closed_spot_number": 0, "occupied_spot_number": 133, "last_updated": "{{now-4}}"},
+  {"parking_id": "demo-hlavni-nadrazi", "primary_source": "tsk_v2", "primary_source_id": "HN", "has_free_spots": false, "total_spot_number": 420, "free_spot_number": 0, "closed_spot_number": 12, "occupied_spot_number": 408, "last_updated": "{{now-4}}"}
+]

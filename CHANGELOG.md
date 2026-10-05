@@ -1,0 +1,38 @@
+# Changelog
+
+Všechny podstatné změny v projektu. Formát vychází z [Keep a Changelog](https://keepachangelog.com/cs/1.1.0/),
+verze se řídí [sémantickým verzováním](https://semver.org/lang/cs/).
+
+## [Nevydáno]
+
+### Přidáno
+
+- Přehled okolí jednoho místa v Praze nad [Golemio API](https://api.golemio.cz/docs/openapi/):
+  - odjezdy MHD ze zastávek do 600 m se zpožděním, zrušenými spoji a mimořádnostmi,
+  - tři nejbližší stanoviště tříděného odpadu se dny svozu, příštím svozem a zaplněním kontejnerů,
+  - velkoobjemové kontejnery, které v okolí teprve přijedou,
+  - index kvality ovzduší a naměřené látky z nejbližší stanice,
+  - teplota, vlhkost, tlak, vítr a srážky z nejbližšího senzoru mikroklimatu,
+  - nejbližší parkoviště a jejich volná místa.
+- Nastavení při prvním spuštění: vlastní klíč k API a místo zadané adresou (hledá Nominatim) nebo souřadnicemi.
+  Klíč se před uložením ověří.
+- Nastavení se ukládá do `%APPDATA%\GolemWatch\settings.json`, klíč zašifrovaný přes Windows DPAPI. Stažená
+  data se neukládají nikam.
+- Odjezdy se obnovují každých 30 sekund, ostatní karty každých 10 minut; ručně tlačítkem Obnovit nebo F5.
+- Chyba jedné karty nezastaví ostatní a ukáže se přímo v ní.
+- Ukázková data pro náměstí Míru: tlačítko v nastavení a přepínač `-Demo`, obojí bez klíče i bez internetu.
+- Přepínač `-Screenshot`, který uloží obrázek okna.
+- Tmavý vzhled včetně titulkového pruhu okna.
+- Ikona ve velikostech 16 až 256 px a `install.cmd`, který vytvoří zástupce v nabídce Start, na ploše
+  a ve složce s aplikací.
+- Testy čtení dat (`tests/unit.ps1`) a test, který aplikaci prokliká přes UI Automation (`tests/e2e.ps1`).
+
+### Změněno
+
+- Aplikace je skript v PowerShellu s oknem ve WPF místo původního projektu v C#. Nic se nekompiluje ani
+  neinstaluje a nevadí jí Smart App Control, který sestavenou verzi na Windows 11 blokoval.
+
+### Známé problémy
+
+- Aplikace zatím neběžela proti skutečným datům z Golemia, jen proti ukázkovým odpovědím sestaveným podle
+  specifikace API.
