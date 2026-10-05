@@ -16,14 +16,14 @@
            "cleaning_frequency": {"id": 13, "duration": "P1W", "frequency": 3, "pick_days": "Po, St, Pá", "next_pick": "{{day+1}}"},
            "last_measurement": {"measured_at_utc": "{{now-40}}", "percent_calculated": 48, "prediction_utc": null},
            "last_pick": "{{now-2800}}", "is_monitored": true},
-          {"ksnko_id": 15303, "container_type": "1100 L normální - HV", "trash_type": {"id": 6, "description": "Plast"},
+          {"ksnko_id": 15303, "container_type": "1100 L normální - HV", "trash_type": {"id": 9, "description": "Multikomoditní sběr"},
            "cleaning_frequency": {"id": 13, "duration": "P1W", "frequency": 3, "pick_days": "Út, Čt, So", "next_pick": "{{day+0}}"},
            "last_measurement": {"measured_at_utc": "{{now-40}}", "percent_calculated": 91, "prediction_utc": null},
            "last_pick": "{{now-2800}}", "is_monitored": true},
           {"ksnko_id": 15304, "container_type": "1500 L zvon - SV", "trash_type": {"id": 1, "description": "Barevné sklo"},
            "cleaning_frequency": {"id": 41, "duration": "P4W", "frequency": 1, "pick_days": "St", "next_pick": "{{day+9}}"},
            "last_measurement": null, "last_pick": null, "is_monitored": false},
-          {"ksnko_id": 15305, "container_type": "240 L normální - SV", "trash_type": {"id": 4, "description": "Nápojové kartóny"},
+          {"ksnko_id": 15305, "container_type": "240 L normální - SV", "trash_type": {"id": 3, "description": "Kovy"},
            "cleaning_frequency": {"id": 21, "duration": "P2W", "frequency": 1, "pick_days": "Čt", "next_pick": "{{day+3}}"},
            "last_measurement": null, "last_pick": null, "is_monitored": false}
         ]
@@ -39,13 +39,13 @@
           {"ksnko_id": 15311, "container_type": "1100 L normální - HV", "trash_type": {"id": 5, "description": "Papír"},
            "cleaning_frequency": {"id": 12, "duration": "P1W", "frequency": 2, "pick_days": "Út, Pá", "next_pick": "{{day+2}}"},
            "last_measurement": null, "last_pick": null, "is_monitored": false},
-          {"ksnko_id": 15312, "container_type": "1100 L normální - HV", "trash_type": {"id": 6, "description": "Plast"},
+          {"ksnko_id": 15312, "container_type": "1100 L normální - HV", "trash_type": {"id": 9, "description": "Multikomoditní sběr"},
            "cleaning_frequency": {"id": 12, "duration": "P1W", "frequency": 2, "pick_days": "Po, Čt", "next_pick": "{{day+1}}"},
            "last_measurement": null, "last_pick": null, "is_monitored": false},
           {"ksnko_id": 15313, "container_type": "1500 L zvon - SV", "trash_type": {"id": 7, "description": "Čiré sklo"},
            "cleaning_frequency": {"id": 41, "duration": "P4W", "frequency": 1, "pick_days": "St", "next_pick": "{{day+16}}"},
            "last_measurement": null, "last_pick": null, "is_monitored": false},
-          {"ksnko_id": 15314, "container_type": "240 L normální - SV", "trash_type": {"id": 3, "description": "Kovy"},
+          {"ksnko_id": 15314, "container_type": "240 L normální - SV", "trash_type": {"id": 8, "description": "Jedlé tuky a oleje"},
            "cleaning_frequency": {"id": 21, "duration": "P2W", "frequency": 1, "pick_days": "Pá", "next_pick": "{{day+4}}"},
            "last_measurement": null, "last_pick": null, "is_monitored": false}
         ]

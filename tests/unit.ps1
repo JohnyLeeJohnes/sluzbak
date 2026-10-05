@@ -68,13 +68,17 @@ $waste = Get-Waste $demo $lat $lng
 Check 'stanoviště' $waste.Stations.Count 2
 Check 'nejbližší stanoviště' $waste.Stations[0].Name 'Náměstí Míru 820/9'
 CheckMatch 'vzdálenost stanoviště' $waste.Stations[0].Distance '^\d+ m$'
-Check 'druhy podle nejbližšího svozu, papír jen jednou' (($waste.Stations[0].Kinds | ForEach-Object Type) -join ', ') 'Plast, Papír, Nápojové kartóny, Barevné sklo'
+Check 'druhy podle nejbližšího svozu, papír jen jednou' (($waste.Stations[0].Kinds | ForEach-Object Type) -join ', ') 'Plasty a nápojové kartony, Papír, Kovy, Barevné sklo'
 $paper = $waste.Stations[0].Kinds | Where-Object Type -eq 'Papír'
 Check 'papír: dny svozu' $paper.PickDays 'Po, St, Pá'
 Check 'papír: další svoz' $paper.Next 'zítra'
 Check 'papír: plnější z obou kontejnerů' $paper.Fill '62 %'
 Check 'papír: barva' $paper.Color '#3B82F6'
-Check 'plast: svoz dnes' ($waste.Stations[0].Kinds | Where-Object Type -eq 'Plast').Next 'dnes'
+# "Multikomoditní sběr" z API je žlutý kontejner na plasty a nápojové kartony, ne směsný odpad.
+$yellow = $waste.Stations[0].Kinds | Where-Object Type -eq 'Plasty a nápojové kartony'
+Check 'multikomoditní sběr: svoz dnes' $yellow.Next 'dnes'
+Check 'multikomoditní sběr: žlutá jako plast' "$($yellow.Color) $($wasteColors[6])" '#F5C542 #F5C542'
+Check 'barvy kontejnerů: sklo zelené a bílé, kovy šedé, oleje fialové' (($waste.Stations.Kinds | Where-Object { $_.Type -in 'Barevné sklo', 'Čiré sklo', 'Kovy', 'Jedlé tuky a oleje' } | Sort-Object Type | ForEach-Object Color) -join ' ') '#3FA34D #E8EAF0 #B48EF2 #A3A9B8'
 Check 'sklo bez senzoru nemá zaplněnost' ($waste.Stations[0].Kinds | Where-Object Type -eq 'Barevné sklo').Fill ''
 Check 'velkoobjemové: daleký vynechán' $waste.Bulky.Count 2
 CheckMatch 'velkoobjemové: kdy' $waste.Bulky[0].When '^(po|út|st|čt|pá|so|ne) \d{1,2}\. \d{1,2}\. · 14:00–18:00$'

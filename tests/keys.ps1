@@ -99,12 +99,33 @@ Step 'uložení ze seznamu' { $ui.DashboardView.IsEnabled -and -not $state.Manua
     foreach ($key in @($cache.Keys)) { $script:fetched[$key] = $cache[$key].At }
     Press $window 'F5'
     Check 'F5 obnoví přehled' $state.Manual $true
+    $started = @($jobs | Where-Object { $_.Done -eq 'Complete-Section' } | ForEach-Object { $_.Key })
+    Check 'karty nahoře se načítají hned' (@($sections | Where-Object { $_ -notin $background -and $_ -in $started }).Count) 6
+    Check 'karty dole čekají, až se ty nahoře dočtou' (@($background | Where-Object { $_ -in $started }).Count) 0
 }
 Step 'obnovení klávesou F5' { -not $state.Manual } {
     $again = @($script:fetched.Keys | Where-Object { $cache[$_].At -ne $script:fetched[$_] })
-    Check 'v paměti jsou odpovědi pro karty na záložce' ($script:fetched.Count -ge 8) $true
+    Check 'v paměti jsou odpovědi všech karet' ($script:fetched.Count -ge 20) $true
     Check 'F5 nestahuje znovu, co je čerstvé' "$($again.Count)" '0'
     Check 'karty mají data dál' "$($ui.TransitBody.Visibility) $($ui.AlertsBody.Visibility)" 'Visible Visible'
+    Check 'na karty dole došlo taky' (@($background | Where-Object { $state.Due.ContainsKey($_) -and $ui["${_}Body"].Visibility -eq 'Visible' }).Count) 4
+
+    # Zaškrtnutí záhlaví mění kliknutí i mezerník; tady se nastaví rovnou.
+    $ui.WasteToggle.IsChecked = $false
+    Check 'sbalená karta schová data i údaj v záhlaví' "$($state.Collapsed -join ',') $($ui.WasteBody.Visibility) $($ui.WasteMeta.Visibility)" 'Waste Collapsed Collapsed'
+    Check 'sbalení je hned na disku' (([IO.File]::ReadAllText($settings) | ConvertFrom-Json).options.collapsed -join ',') 'Waste'
+    Press $window 'F5'
+    Check 'sbalenou kartu F5 nenačítá' (@($jobs | Where-Object { $_.Key -eq 'Waste' }).Count) 0
+    $ui.WasteToggle.IsChecked = $true
+    Check 'čerstvá data jsou po rozbalení hned vidět' "$($ui.WasteBody.Visibility) $($ui.WasteMeta.Visibility)" 'Visible Visible'
+    $ui.WasteToggle.IsChecked = $false
+    # Jako by karta byla sbalená déle, než data vydrží.
+    $state.Due['Waste'] = [DateTime]::UtcNow.AddSeconds(-1)
+    $ui.WasteToggle.IsChecked = $true
+    Check 'zestárlá data se po rozbalení neukážou a karta se načte znovu' "$($ui.WasteBody.Visibility) $($ui.WasteState.Text) $(@($jobs | Where-Object { $_.Key -eq 'Waste' }).Count)" 'Collapsed Načítám… 1'
+}
+Step 'načtení rozbalené karty' { $ui.WasteBody.Visibility -eq 'Visible' -and -not $state.Manual } {
+    Check 'rozbalená karta má zase data' "$($ui.WasteMeta.Text) $($state.Collapsed.Count)" '2 nejbližší 0'
 
     Show-Setup
     Check 'uložená adresa je v poli' $ui.AddressBox.Text 'Náměstí Míru, Vinohrady'

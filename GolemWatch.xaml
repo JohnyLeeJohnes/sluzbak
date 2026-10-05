@@ -391,29 +391,29 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
 
-        <!-- Záložka přehledu -->
-        <Style x:Key="Tab" TargetType="RadioButton">
-            <Setter Property="Height" Value="28"/>
-            <Setter Property="MinWidth" Value="92"/>
-            <Setter Property="Padding" Value="16,0"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+        <!-- Záhlaví karty: klik kamkoli do něj kartu sbalí nebo rozbalí, šipka vpravo ukazuje stav -->
+        <Style x:Key="CardHeader" TargetType="ToggleButton">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="ToolTip" Value="Sbalit nebo rozbalit"/>
             <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="Bd" Background="Transparent" CornerRadius="14" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <!-- Průhledné pozadí, aby šlo kliknout i do mezery mezi nadpisem a údajem vpravo. -->
+                        <Border Background="Transparent">
+                            <DockPanel>
+                                <TextBlock x:Name="Chevron" DockPanel.Dock="Right" FontFamily="Segoe MDL2 Assets" FontSize="9"
+                                           Foreground="{StaticResource Muted}" Text="&#xE70E;" VerticalAlignment="Center" Margin="10,1,0,0"/>
+                                <ContentPresenter/>
+                            </DockPanel>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Foreground" Value="{StaticResource Text}"/>
+                            <Trigger Property="IsChecked" Value="False">
+                                <Setter TargetName="Chevron" Property="Text" Value="&#xE70D;"/>
                             </Trigger>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Accent}"/>
-                                <Setter Property="Foreground" Value="{StaticResource OnAccent}"/>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chevron" Property="Foreground" Value="{StaticResource Text}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -517,14 +517,14 @@
                         <WrapPanel>
                             <ToggleButton x:Name="TransitChip" Style="{StaticResource Chip}" Content="Odjezdy"/>
                             <ToggleButton x:Name="VehiclesChip" Style="{StaticResource Chip}" Content="Jede kolem"/>
+                            <ToggleButton x:Name="WasteChip" Style="{StaticResource Chip}" Content="Svoz odpadu"/>
                             <ToggleButton x:Name="AlertsChip" Style="{StaticResource Chip}" Content="Výluky"/>
-                            <ToggleButton x:Name="ParkingChip" Style="{StaticResource Chip}" Content="Parkování"/>
                             <ToggleButton x:Name="CarsChip" Style="{StaticResource Chip}" Content="Sdílená auta"/>
                             <ToggleButton x:Name="CyclingChip" Style="{StaticResource Chip}" Content="Cyklosčítač"/>
-                            <ToggleButton x:Name="WasteChip" Style="{StaticResource Chip}" Content="Svoz odpadu"/>
-                            <ToggleButton x:Name="NearbyChip" Style="{StaticResource Chip}" Content="V okolí"/>
                             <ToggleButton x:Name="AirChip" Style="{StaticResource Chip}" Content="Ovzduší"/>
                             <ToggleButton x:Name="MicroclimateChip" Style="{StaticResource Chip}" Content="Mikroklima"/>
+                            <ToggleButton x:Name="ParkingChip" Style="{StaticResource Chip}" Content="Parkování"/>
+                            <ToggleButton x:Name="NearbyChip" Style="{StaticResource Chip}" Content="V okolí"/>
                         </WrapPanel>
 
                         <TextBlock Style="{StaticResource FieldLabel}" Text="Jak daleko hledat (v metrech)" Margin="0,16,0,8"/>
@@ -591,7 +591,7 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- Přehled: záhlaví se záložkami a pod ním karty otevřené záložky -->
+        <!-- Přehled: záhlaví a pod ním všechny karty ve třech sloupcích -->
         <Grid x:Name="DashboardView" Visibility="Hidden">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -602,13 +602,12 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition/>
                     <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="17" Foreground="{StaticResource Accent}"
                                Text="&#xE707;" VerticalAlignment="Center" Margin="0,2,10,0"/>
                     <StackPanel>
-                        <TextBlock x:Name="PlaceText" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="330"/>
+                        <TextBlock x:Name="PlaceText" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="520"/>
                         <TextBlock x:Name="CoordinatesText" Style="{StaticResource Small}"/>
                     </StackPanel>
                     <Border x:Name="DemoBadge" Visibility="Collapsed" Background="{StaticResource AccentTint}"
@@ -618,15 +617,7 @@
                     </Border>
                 </StackPanel>
 
-                <!-- Záložky se jmenují <záložka>Tab a jejich mřížky <záložka>Page; GolemWatch.ps1 je podle jmen hledá. -->
-                <Border x:Name="Tabs" Grid.Column="1" Background="{StaticResource Well}" CornerRadius="17" Padding="3" VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal">
-                        <RadioButton x:Name="TrafficTab" Style="{StaticResource Tab}" GroupName="Pages" Content="Doprava"/>
-                        <RadioButton x:Name="AroundTab" Style="{StaticResource Tab}" GroupName="Pages" Content="Okolí"/>
-                    </StackPanel>
-                </Border>
-
-                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <TextBlock x:Name="UpdatedText" Style="{StaticResource Small}" VerticalAlignment="Center" Margin="0,0,12,0"/>
                     <Button x:Name="RefreshButton" Style="{StaticResource QuietButton}" Margin="0,0,8,0"
                             ToolTip="Odjezdy a vozidla se načtou hned, ostatní data nejvýš jednou za 10 minut (F5)">
@@ -646,430 +637,427 @@
 
             <!-- Posuvník má místo vyhrazené pořád, aby karty neposkočily, když se objeví. -->
             <ScrollViewer x:Name="DashboardScroll" Grid.Row="1" VerticalScrollBarVisibility="Visible" Focusable="False">
-                <Grid Margin="20,0,10,0">
+                <!-- Sloupce se jmenují Column1 až 3 a karty <sekce>Card; prázdný sloupec okno zavře. Záhlaví karty
+                     <sekce>Toggle ji sbaluje a rozbaluje. Nahoře je to hlavní, dole to, co se načítá až po něm. -->
+                <Grid x:Name="DashboardGrid" Margin="20,0,10,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.12*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
 
-                    <!-- Doprava. Sloupce se jmenují <záložka>Column1 až 3 a karty <sekce>Card: prázdný sloupec okno zavře. -->
-                    <Grid x:Name="TrafficPage">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1.12*"/>
-                            <ColumnDefinition Width="12"/>
-                            <ColumnDefinition/>
-                            <ColumnDefinition Width="12"/>
-                            <ColumnDefinition/>
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel x:Name="TrafficColumn1">
-                            <Border x:Name="TransitCard" Style="{StaticResource Card}">
-                                <StackPanel>
+                    <StackPanel x:Name="Column1">
+                        <Border x:Name="TransitCard" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <ToggleButton x:Name="TransitToggle" Style="{StaticResource CardHeader}" IsChecked="True" AutomationProperties.Name="Odjezdy">
                                     <DockPanel>
                                         <TextBlock Style="{StaticResource CardGlyph}" Text="&#xE806;"/>
                                         <TextBlock Style="{StaticResource CardTitle}" Text="Odjezdy"/>
                                         <TextBlock x:Name="TransitMeta" Style="{StaticResource CardMeta}"/>
                                     </DockPanel>
-                                    <TextBlock x:Name="TransitState" Style="{StaticResource CardState}"/>
-                                    <StackPanel x:Name="TransitBody" Visibility="Collapsed" Margin="0,10,0,0">
-                                        <ItemsControl ItemsSource="{Binding Departures}" Focusable="False">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Grid Margin="0,0,0,7" Opacity="{Binding Opacity}">
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="48"/>
-                                                            <ColumnDefinition/>
-                                                            <ColumnDefinition Width="Auto"/>
-                                                        </Grid.ColumnDefinitions>
-                                                        <Border Style="{StaticResource RouteBadge}" Background="{Binding Color}" Height="26">
-                                                            <TextBlock Text="{Binding Route}" Foreground="{Binding RouteTextColor}" FontWeight="Bold"
-                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                        </Border>
-                                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                            <TextBlock Text="{Binding Headsign}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                                            <TextBlock Text="{Binding Stop}" Style="{StaticResource Small}"/>
-                                                        </StackPanel>
-                                                        <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="10,0,0,0">
-                                                            <TextBlock Text="{Binding In}" Foreground="{Binding InColor}" FontWeight="SemiBold" HorizontalAlignment="Right"/>
-                                                            <TextBlock Style="{StaticResource Small}" HorizontalAlignment="Right">
-                                                                <Run Text="{Binding Time, Mode=OneWay}"/>
-                                                                <Run Text="{Binding Delay, Mode=OneWay}" Foreground="{StaticResource Accent}"/>
-                                                            </TextBlock>
-                                                        </StackPanel>
-                                                    </Grid>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                        <ItemsControl ItemsSource="{Binding Infotexts}" Focusable="False">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Border Background="{StaticResource Well}" CornerRadius="8" Padding="10,7" Margin="0,2,0,0">
-                                                        <DockPanel>
-                                                            <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="{StaticResource Accent}"
-                                                                       Text="&#xE7BA;" Margin="0,2,8,0" VerticalAlignment="Top"/>
-                                                            <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="12"/>
-                                                        </DockPanel>
+                                </ToggleButton>
+                                <TextBlock x:Name="TransitState" Style="{StaticResource CardState}"/>
+                                <StackPanel x:Name="TransitBody" Visibility="Collapsed" Margin="0,10,0,0">
+                                    <ItemsControl ItemsSource="{Binding Departures}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,0,0,7" Opacity="{Binding Opacity}">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="48"/>
+                                                        <ColumnDefinition/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Style="{StaticResource RouteBadge}" Background="{Binding Color}" Height="26">
+                                                        <TextBlock Text="{Binding Route}" Foreground="{Binding RouteTextColor}" FontWeight="Bold"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                     </Border>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </StackPanel>
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Headsign}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                        <TextBlock Text="{Binding Stop}" Style="{StaticResource Small}"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="10,0,0,0">
+                                                        <TextBlock Text="{Binding In}" Foreground="{Binding InColor}" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                                                        <TextBlock Style="{StaticResource Small}" HorizontalAlignment="Right">
+                                                            <Run Text="{Binding Time, Mode=OneWay}"/>
+                                                            <Run Text="{Binding Delay, Mode=OneWay}" Foreground="{StaticResource Accent}"/>
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <ItemsControl ItemsSource="{Binding Infotexts}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="{StaticResource Well}" CornerRadius="8" Padding="10,7" Margin="0,2,0,0">
+                                                    <DockPanel>
+                                                        <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="{StaticResource Accent}"
+                                                                   Text="&#xE7BA;" Margin="0,2,8,0" VerticalAlignment="Top"/>
+                                                        <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="12"/>
+                                                    </DockPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
                                 </StackPanel>
-                            </Border>
-                        </StackPanel>
+                            </StackPanel>
+                        </Border>
 
-                        <StackPanel x:Name="TrafficColumn2" Grid.Column="2">
-                            <!-- Vozidla, která právě jedou kolem -->
-                            <Border x:Name="VehiclesCard" Style="{StaticResource Card}">
-                                <StackPanel>
+                        <Border x:Name="VehiclesCard" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <ToggleButton x:Name="VehiclesToggle" Style="{StaticResource CardHeader}" IsChecked="True" AutomationProperties.Name="Právě jede kolem">
                                     <DockPanel>
                                         <TextBlock Style="{StaticResource CardGlyph}" Text="&#xE7C0;"/>
                                         <TextBlock Style="{StaticResource CardTitle}" Text="Právě jede kolem"/>
                                         <TextBlock x:Name="VehiclesMeta" Style="{StaticResource CardMeta}"/>
                                     </DockPanel>
-                                    <TextBlock x:Name="VehiclesState" Style="{StaticResource CardState}"/>
-                                    <StackPanel x:Name="VehiclesBody" Visibility="Collapsed" Margin="0,4,0,0">
-                                        <ItemsControl ItemsSource="{Binding Items}" Focusable="False">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Grid Margin="0,6,0,0">
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="44"/>
-                                                            <ColumnDefinition/>
-                                                            <ColumnDefinition Width="Auto"/>
-                                                            <ColumnDefinition Width="Auto" MinWidth="46"/>
-                                                        </Grid.ColumnDefinitions>
-                                                        <Border Style="{StaticResource RouteBadge}" Background="{Binding Color}">
-                                                            <TextBlock Text="{Binding Route}" Foreground="{Binding RouteTextColor}" FontSize="12" FontWeight="Bold"
-                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                        </Border>
-                                                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
-                                                            <Run Text="{Binding Headsign, Mode=OneWay}" FontWeight="SemiBold"/>
-                                                            <Run Text="{Binding State, Mode=OneWay}" Foreground="{StaticResource Muted}" FontSize="11.5"/>
-                                                        </TextBlock>
-                                                        <TextBlock Grid.Column="2" Text="{Binding Delay}" Foreground="{StaticResource Accent}" FontSize="11.5"
-                                                                   VerticalAlignment="Center" Margin="8,0,0,0"/>
-                                                        <TextBlock Grid.Column="3" Text="{Binding Distance}" Style="{StaticResource Small}"
-                                                                   HorizontalAlignment="Right" VerticalAlignment="Center" Margin="8,0,0,0"/>
-                                                    </Grid>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </StackPanel>
+                                </ToggleButton>
+                                <TextBlock x:Name="VehiclesState" Style="{StaticResource CardState}"/>
+                                <StackPanel x:Name="VehiclesBody" Visibility="Collapsed" Margin="0,4,0,0">
+                                    <ItemsControl ItemsSource="{Binding Items}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,6,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="44"/>
+                                                        <ColumnDefinition/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto" MinWidth="46"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Style="{StaticResource RouteBadge}" Background="{Binding Color}">
+                                                        <TextBlock Text="{Binding Route}" Foreground="{Binding RouteTextColor}" FontSize="12" FontWeight="Bold"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <TextBlock Grid.Column="1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                                                        <Run Text="{Binding Headsign, Mode=OneWay}" FontWeight="SemiBold"/>
+                                                        <Run Text="{Binding State, Mode=OneWay}" Foreground="{StaticResource Muted}" FontSize="11.5"/>
+                                                    </TextBlock>
+                                                    <TextBlock Grid.Column="2" Text="{Binding Delay}" Foreground="{StaticResource Accent}" FontSize="11.5"
+                                                               VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                                    <TextBlock Grid.Column="3" Text="{Binding Distance}" Style="{StaticResource Small}"
+                                                               HorizontalAlignment="Right" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
                                 </StackPanel>
-                            </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
 
-                            <!-- Výluky a mimořádnosti v celé síti PID -->
-                            <Border x:Name="AlertsCard" Style="{StaticResource Card}">
-                                <StackPanel>
-                                    <DockPanel>
-                                        <TextBlock Style="{StaticResource CardGlyph}" Text="&#xE7BA;"/>
-                                        <TextBlock Style="{StaticResource CardTitle}" Text="Výluky a mimořádnosti"/>
-                                        <TextBlock x:Name="AlertsMeta" Style="{StaticResource CardMeta}"/>
-                                    </DockPanel>
-                                    <TextBlock x:Name="AlertsState" Style="{StaticResource CardState}"/>
-                                    <StackPanel x:Name="AlertsBody" Visibility="Collapsed" Margin="0,2,0,0">
-                                        <ItemsControl ItemsSource="{Binding Items}" Focusable="False">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Grid Margin="0,8,0,0" ToolTip="{Binding Text}">
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="11"/>
-                                                            <ColumnDefinition/>
-                                                        </Grid.ColumnDefinitions>
-                                                        <Border Width="3" CornerRadius="1.5" Background="{Binding Color}" HorizontalAlignment="Left"/>
-                                                        <StackPanel Grid.Column="1">
-                                                            <!-- Dva řádky; celý text je v bublině po najetí myší. -->
-                                                            <TextBlock Text="{Binding Text}" FontSize="12" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="33"/>
-                                                            <TextBlock Style="{StaticResource Small}" Margin="0,1,0,0">
-                                                                <Run Text="{Binding Stops, Mode=OneWay}"/>
-                                                                <Run Text="{Binding Until, Mode=OneWay}" Foreground="{StaticResource Text}"/>
-                                                            </TextBlock>
-                                                        </StackPanel>
-                                                    </Grid>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                        <TextBlock Text="{Binding More}" Style="{StaticResource SmallOptional}" Margin="11,7,0,0"/>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
-
-                        <StackPanel x:Name="TrafficColumn3" Grid.Column="4">
-                            <Border x:Name="ParkingCard" Style="{StaticResource Card}">
-                                <StackPanel>
-                                    <DockPanel>
-                                        <TextBlock Style="{StaticResource CardGlyph}" Text="&#xE804;"/>
-                                        <TextBlock Style="{StaticResource CardTitle}" Text="Parkování"/>
-                                        <TextBlock x:Name="ParkingMeta" Style="{StaticResource CardMeta}"/>
-                                    </DockPanel>
-                                    <TextBlock x:Name="ParkingState" Style="{StaticResource CardState}"/>
-                                    <StackPanel x:Name="ParkingBody" Visibility="Collapsed" Margin="0,3,0,0">
-                                        <ItemsControl ItemsSource="{Binding Items}" Focusable="False">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <DockPanel Margin="0,6,0,0">
-                                                        <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Margin="10,0,0,0">
-                                                            <Run Text="{Binding Free, Mode=OneWay}" Foreground="{Binding FreeColor}" FontWeight="SemiBold"/>
-                                                            <Run Text="{Binding Capacity, Mode=OneWay}" Foreground="{StaticResource Muted}" FontSize="11.5"/>
-                                                        </TextBlock>
-                                                        <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
-                                                            <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold"/>
-                                                            <Run Text="{Binding Detail, Mode=OneWay}" Foreground="{StaticResource Muted}" FontSize="11.5"/>
-                                                        </TextBlock>
-                                                    </DockPanel>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                        <TextBlock Text="{Binding Machine}" Style="{StaticResource SmallOptional}" Margin="0,8,0,0"/>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-
-                            <Border x:Name="CarsCard" Style="{StaticResource Card}">
-                                <StackPanel>
-                                    <DockPanel>
-                                        <TextBlock Style="{StaticResource CardGlyph}" Text="&#xE811;"/>
-                                        <TextBlock Style="{StaticResource CardTitle}" Text="Sdílená auta"/>
-                                        <TextBlock x:Name="CarsMeta" Style="{StaticResource CardMeta}"/>
-                                    </DockPanel>
-                                    <TextBlock x:Name="CarsState" Style="{StaticResource CardState}"/>
-                                    <StackPanel x:Name="CarsBody" Visibility="Collapsed" Margin="0,3,0,0">
-                                        <ItemsControl ItemsSource="{Binding Items}" Focusable="False">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <DockPanel Margin="0,6,0,0">
-                                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Distance}" Style="{StaticResource Small}"
-                                                                   VerticalAlignment="Center" Margin="10,0,0,0"/>
-                                                        <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
-                                                            <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold"/>
-                                                            <Run Text="{Binding Detail, Mode=OneWay}" Foreground="{StaticResource Muted}" FontSize="11.5"/>
-                                                        </TextBlock>
-                                                    </DockPanel>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-
-                            <Border x:Name="CyclingCard" Style="{StaticResource Card}">
-                                <StackPanel>
-                                    <DockPanel>
-                                        <TextBlock Style="{StaticResource CardGlyph}" Text="&#xE9D2;"/>
-                                        <TextBlock Style="{StaticResource CardTitle}" Text="Cyklosčítač"/>
-                                        <TextBlock x:Name="CyclingMeta" Style="{StaticResource CardMeta}"/>
-                                    </DockPanel>
-                                    <TextBlock x:Name="CyclingState" Style="{StaticResource CardState}"/>
-                                    <StackPanel x:Name="CyclingBody" Visibility="Collapsed" Margin="0,8,0,0">
-                                        <TextBlock>
-                                            <Run Text="{Binding Total, Mode=OneWay}" FontSize="20" FontWeight="SemiBold"/>
-                                            <Run Text="{Binding Caption, Mode=OneWay}" Foreground="{StaticResource Muted}" FontSize="11.5"/>
-                                        </TextBlock>
-                                        <ItemsControl ItemsSource="{Binding Items}" Focusable="False">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <DockPanel Margin="0,5,0,0">
-                                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Value}" FontWeight="SemiBold" Margin="10,0,0,0"/>
-                                                        <TextBlock Text="{Binding Name}" Foreground="{StaticResource Muted}" TextTrimming="CharacterEllipsis"/>
-                                                    </DockPanel>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
-                    </Grid>
-
-                    <!-- Okolí -->
-                    <Grid x:Name="AroundPage" Visibility="Collapsed">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition/>
-                            <ColumnDefinition Width="12"/>
-                            <ColumnDefinition/>
-                            <ColumnDefinition Width="12"/>
-                            <ColumnDefinition/>
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel x:Name="AroundColumn1">
-                            <Border x:Name="WasteCard" Style="{StaticResource Card}">
-                                <StackPanel>
+                    <StackPanel x:Name="Column2" Grid.Column="2">
+                        <Border x:Name="WasteCard" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <ToggleButton x:Name="WasteToggle" Style="{StaticResource CardHeader}" IsChecked="True" AutomationProperties.Name="Svoz odpadu">
                                     <DockPanel>
                                         <TextBlock Style="{StaticResource CardGlyph}" Text="&#xE74D;"/>
                                         <TextBlock Style="{StaticResource CardTitle}" Text="Svoz odpadu"/>
                                         <TextBlock x:Name="WasteMeta" Style="{StaticResource CardMeta}"/>
                                     </DockPanel>
-                                    <TextBlock x:Name="WasteState" Style="{StaticResource CardState}"/>
-                                    <StackPanel x:Name="WasteBody" Visibility="Collapsed" Margin="0,10,0,0">
-                                        <ItemsControl ItemsSource="{Binding Stations}" Focusable="False">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <StackPanel Margin="0,0,0,12">
-                                                        <DockPanel>
-                                                            <TextBlock DockPanel.Dock="Right" Text="{Binding Distance}" Style="{StaticResource Small}"
-                                                                       VerticalAlignment="Center" Margin="10,0,0,0"/>
-                                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                                        </DockPanel>
-                                                        <ItemsControl ItemsSource="{Binding Kinds}" Focusable="False">
-                                                            <ItemsControl.ItemTemplate>
-                                                                <DataTemplate>
-                                                                    <Grid Margin="0,5,0,0">
-                                                                        <Grid.ColumnDefinitions>
-                                                                            <ColumnDefinition Width="17"/>
-                                                                            <ColumnDefinition/>
-                                                                            <ColumnDefinition Width="Auto"/>
-                                                                            <ColumnDefinition Width="Auto" MinWidth="62"/>
-                                                                        </Grid.ColumnDefinitions>
-                                                                        <Ellipse Width="9" Height="9" Fill="{Binding Color}" HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                                                                        <TextBlock Grid.Column="1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
-                                                                            <Run Text="{Binding Type, Mode=OneWay}"/>
-                                                                            <Run Text="{Binding PickDays, Mode=OneWay}" Foreground="{StaticResource Muted}" FontSize="11.5"/>
-                                                                        </TextBlock>
-                                                                        <TextBlock Grid.Column="2" Text="{Binding Fill}" Style="{StaticResource Small}" VerticalAlignment="Center"
-                                                                                   Margin="8,0,0,0" ToolTip="Jak je kontejner plný podle senzoru"/>
-                                                                        <TextBlock Grid.Column="3" Text="{Binding Next}" FontWeight="SemiBold" HorizontalAlignment="Right"
-                                                                                   VerticalAlignment="Center" Margin="8,0,0,0" ToolTip="Příští svoz"/>
-                                                                    </Grid>
-                                                                </DataTemplate>
-                                                            </ItemsControl.ItemTemplate>
-                                                        </ItemsControl>
-                                                    </StackPanel>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-
-                                        <!-- Klíč bez přístupu k velkoobjemovým kontejnerům: nadpis se schová, seznam i poznámka jsou prázdné. -->
-                                        <TextBlock Text="Velkoobjemové kontejnery">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock" BasedOn="{StaticResource SubLabel}">
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding ShowBulky}" Value="False">
-                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                        <ItemsControl ItemsSource="{Binding Bulky}" Focusable="False">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <DockPanel Margin="0,5,0,0">
+                                </ToggleButton>
+                                <TextBlock x:Name="WasteState" Style="{StaticResource CardState}"/>
+                                <StackPanel x:Name="WasteBody" Visibility="Collapsed" Margin="0,10,0,0">
+                                    <ItemsControl ItemsSource="{Binding Stations}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Margin="0,0,0,12">
+                                                    <DockPanel>
                                                         <TextBlock DockPanel.Dock="Right" Text="{Binding Distance}" Style="{StaticResource Small}"
                                                                    VerticalAlignment="Center" Margin="10,0,0,0"/>
-                                                        <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
-                                                            <Run Text="{Binding When, Mode=OneWay}" FontWeight="SemiBold"/>
-                                                            <Run Text="{Binding Street, Mode=OneWay}" Foreground="{StaticResource Muted}" FontSize="11.5"/>
-                                                        </TextBlock>
+                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
                                                     </DockPanel>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                        <TextBlock Text="{Binding BulkyNote}" Style="{StaticResource SmallOptional}" Margin="0,5,0,0"/>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
+                                                    <ItemsControl ItemsSource="{Binding Kinds}" Focusable="False">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Grid Margin="0,5,0,0">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="17"/>
+                                                                        <ColumnDefinition/>
+                                                                        <ColumnDefinition Width="Auto"/>
+                                                                        <ColumnDefinition Width="Auto" MinWidth="62"/>
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <Ellipse Width="9" Height="9" Fill="{Binding Color}" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                                                    <TextBlock Grid.Column="1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                                                                        <Run Text="{Binding Type, Mode=OneWay}"/>
+                                                                        <Run Text="{Binding PickDays, Mode=OneWay}" Foreground="{StaticResource Muted}" FontSize="11.5"/>
+                                                                    </TextBlock>
+                                                                    <TextBlock Grid.Column="2" Text="{Binding Fill}" Style="{StaticResource Small}" VerticalAlignment="Center"
+                                                                               Margin="8,0,0,0" ToolTip="Jak je kontejner plný podle senzoru"/>
+                                                                    <TextBlock Grid.Column="3" Text="{Binding Next}" FontWeight="SemiBold" HorizontalAlignment="Right"
+                                                                               VerticalAlignment="Center" Margin="8,0,0,0" ToolTip="Příští svoz"/>
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
 
-                        <!-- V okolí: od každého druhu místa to nejbližší -->
-                        <StackPanel x:Name="AroundColumn2" Grid.Column="2">
-                            <Border x:Name="NearbyCard" Style="{StaticResource Card}">
-                                <StackPanel>
+                                    <!-- Klíč bez přístupu k velkoobjemovým kontejnerům: nadpis se schová, seznam i poznámka jsou prázdné. -->
+                                    <TextBlock Text="Velkoobjemové kontejnery">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SubLabel}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ShowBulky}" Value="False">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <ItemsControl ItemsSource="{Binding Bulky}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <DockPanel Margin="0,5,0,0">
+                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Distance}" Style="{StaticResource Small}"
+                                                               VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                                    <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                                                        <Run Text="{Binding When, Mode=OneWay}" FontWeight="SemiBold"/>
+                                                        <Run Text="{Binding Street, Mode=OneWay}" Foreground="{StaticResource Muted}" FontSize="11.5"/>
+                                                    </TextBlock>
+                                                </DockPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Text="{Binding BulkyNote}" Style="{StaticResource SmallOptional}" Margin="0,5,0,0"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border x:Name="AlertsCard" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <ToggleButton x:Name="AlertsToggle" Style="{StaticResource CardHeader}" IsChecked="True" AutomationProperties.Name="Výluky a mimořádnosti">
                                     <DockPanel>
-                                        <TextBlock Style="{StaticResource CardGlyph}" Text="&#xE81D;"/>
-                                        <TextBlock Style="{StaticResource CardTitle}" Text="V okolí"/>
-                                        <TextBlock x:Name="NearbyMeta" Style="{StaticResource CardMeta}"/>
+                                        <TextBlock Style="{StaticResource CardGlyph}" Text="&#xE7BA;"/>
+                                        <TextBlock Style="{StaticResource CardTitle}" Text="Výluky a mimořádnosti"/>
+                                        <TextBlock x:Name="AlertsMeta" Style="{StaticResource CardMeta}"/>
                                     </DockPanel>
-                                    <TextBlock x:Name="NearbyState" Style="{StaticResource CardState}"/>
-                                    <StackPanel x:Name="NearbyBody" Visibility="Collapsed" Margin="0,2,0,0">
-                                        <ItemsControl ItemsSource="{Binding Items}" Focusable="False">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <!-- Dva řádky; adresa a otevírací doba celým textem jsou v bublině. -->
-                                                    <StackPanel Margin="0,8,0,0" ToolTip="{Binding Detail}" Background="Transparent">
-                                                        <DockPanel>
-                                                            <TextBlock DockPanel.Dock="Right" Text="{Binding Distance}" Style="{StaticResource Small}"
-                                                                       VerticalAlignment="Center" Margin="10,0,0,0"/>
-                                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                                        </DockPanel>
-                                                        <DockPanel>
-                                                            <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" Foreground="{Binding StatusColor}"
-                                                                       FontSize="11.5" FontWeight="SemiBold" Margin="10,0,0,0"/>
-                                                            <TextBlock Style="{StaticResource Small}">
-                                                                <Run Text="{Binding Kind, Mode=OneWay}" FontWeight="SemiBold"/>
-                                                                <Run Text="{Binding Address, Mode=OneWay}"/>
-                                                            </TextBlock>
-                                                        </DockPanel>
+                                </ToggleButton>
+                                <TextBlock x:Name="AlertsState" Style="{StaticResource CardState}"/>
+                                <StackPanel x:Name="AlertsBody" Visibility="Collapsed" Margin="0,2,0,0">
+                                    <ItemsControl ItemsSource="{Binding Items}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,8,0,0" ToolTip="{Binding Text}">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="11"/>
+                                                        <ColumnDefinition/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Width="3" CornerRadius="1.5" Background="{Binding Color}" HorizontalAlignment="Left"/>
+                                                    <StackPanel Grid.Column="1">
+                                                        <!-- Dva řádky; celý text je v bublině po najetí myší. -->
+                                                        <TextBlock Text="{Binding Text}" FontSize="12" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="33"/>
+                                                        <TextBlock Style="{StaticResource Small}" Margin="0,1,0,0">
+                                                            <Run Text="{Binding Stops, Mode=OneWay}"/>
+                                                            <Run Text="{Binding Until, Mode=OneWay}" Foreground="{StaticResource Text}"/>
+                                                        </TextBlock>
                                                     </StackPanel>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </StackPanel>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Text="{Binding More}" Style="{StaticResource SmallOptional}" Margin="11,7,0,0"/>
                                 </StackPanel>
-                            </Border>
-                        </StackPanel>
+                            </StackPanel>
+                        </Border>
 
-                        <!-- Ovzduší a mikroklima -->
-                        <StackPanel x:Name="AroundColumn3" Grid.Column="4">
-                            <Border x:Name="AirCard" Style="{StaticResource Card}">
-                                <StackPanel>
+                        <Border x:Name="CarsCard" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <ToggleButton x:Name="CarsToggle" Style="{StaticResource CardHeader}" IsChecked="True" AutomationProperties.Name="Sdílená auta">
+                                    <DockPanel>
+                                        <TextBlock Style="{StaticResource CardGlyph}" Text="&#xE811;"/>
+                                        <TextBlock Style="{StaticResource CardTitle}" Text="Sdílená auta"/>
+                                        <TextBlock x:Name="CarsMeta" Style="{StaticResource CardMeta}"/>
+                                    </DockPanel>
+                                </ToggleButton>
+                                <TextBlock x:Name="CarsState" Style="{StaticResource CardState}"/>
+                                <StackPanel x:Name="CarsBody" Visibility="Collapsed" Margin="0,3,0,0">
+                                    <ItemsControl ItemsSource="{Binding Items}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <DockPanel Margin="0,6,0,0">
+                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Distance}" Style="{StaticResource Small}"
+                                                               VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                                    <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                                                        <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold"/>
+                                                        <Run Text="{Binding Detail, Mode=OneWay}" Foreground="{StaticResource Muted}" FontSize="11.5"/>
+                                                    </TextBlock>
+                                                </DockPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border x:Name="CyclingCard" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <ToggleButton x:Name="CyclingToggle" Style="{StaticResource CardHeader}" IsChecked="True" AutomationProperties.Name="Cyklosčítač">
+                                    <DockPanel>
+                                        <TextBlock Style="{StaticResource CardGlyph}" Text="&#xE9D2;"/>
+                                        <TextBlock Style="{StaticResource CardTitle}" Text="Cyklosčítač"/>
+                                        <TextBlock x:Name="CyclingMeta" Style="{StaticResource CardMeta}"/>
+                                    </DockPanel>
+                                </ToggleButton>
+                                <TextBlock x:Name="CyclingState" Style="{StaticResource CardState}"/>
+                                <StackPanel x:Name="CyclingBody" Visibility="Collapsed" Margin="0,8,0,0">
+                                    <TextBlock>
+                                        <Run Text="{Binding Total, Mode=OneWay}" FontSize="20" FontWeight="SemiBold"/>
+                                        <Run Text="{Binding Caption, Mode=OneWay}" Foreground="{StaticResource Muted}" FontSize="11.5"/>
+                                    </TextBlock>
+                                    <ItemsControl ItemsSource="{Binding Items}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <DockPanel Margin="0,5,0,0">
+                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Value}" FontWeight="SemiBold" Margin="10,0,0,0"/>
+                                                    <TextBlock Text="{Binding Name}" Foreground="{StaticResource Muted}" TextTrimming="CharacterEllipsis"/>
+                                                </DockPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel x:Name="Column3" Grid.Column="4">
+                        <Border x:Name="AirCard" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <ToggleButton x:Name="AirToggle" Style="{StaticResource CardHeader}" IsChecked="True" AutomationProperties.Name="Ovzduší">
                                     <DockPanel>
                                         <TextBlock Style="{StaticResource CardGlyph}" Text="&#xE753;"/>
                                         <TextBlock Style="{StaticResource CardTitle}" Text="Ovzduší"/>
                                         <TextBlock x:Name="AirMeta" Style="{StaticResource CardMeta}"/>
                                     </DockPanel>
-                                    <TextBlock x:Name="AirState" Style="{StaticResource CardState}"/>
-                                    <StackPanel x:Name="AirBody" Visibility="Collapsed" Margin="0,10,0,0">
-                                        <DockPanel>
-                                            <TextBlock DockPanel.Dock="Right" Text="{Binding Updated}" Style="{StaticResource Small}"
-                                                       VerticalAlignment="Center" Margin="10,0,0,0"/>
-                                            <Border Background="{Binding IndexColor}" CornerRadius="8" Padding="11,5" HorizontalAlignment="Left">
-                                                <TextBlock Text="{Binding Index}" Foreground="{Binding IndexTextColor}" FontSize="14" FontWeight="SemiBold"/>
-                                            </Border>
-                                        </DockPanel>
-                                        <ItemsControl ItemsSource="{Binding Components}" Focusable="False" Margin="0,3,0,0">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <DockPanel Margin="0,6,0,0">
-                                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Value}" FontWeight="SemiBold"
-                                                                   VerticalAlignment="Center" Margin="10,0,0,0"/>
-                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Width="48" VerticalAlignment="Center"/>
-                                                        <TextBlock Text="{Binding Detail}" Style="{StaticResource Small}" VerticalAlignment="Center"/>
-                                                    </DockPanel>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </StackPanel>
+                                </ToggleButton>
+                                <TextBlock x:Name="AirState" Style="{StaticResource CardState}"/>
+                                <StackPanel x:Name="AirBody" Visibility="Collapsed" Margin="0,10,0,0">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Updated}" Style="{StaticResource Small}"
+                                                   VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                        <Border Background="{Binding IndexColor}" CornerRadius="8" Padding="11,5" HorizontalAlignment="Left">
+                                            <TextBlock Text="{Binding Index}" Foreground="{Binding IndexTextColor}" FontSize="14" FontWeight="SemiBold"/>
+                                        </Border>
+                                    </DockPanel>
+                                    <ItemsControl ItemsSource="{Binding Components}" Focusable="False" Margin="0,3,0,0">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <DockPanel Margin="0,6,0,0">
+                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Value}" FontWeight="SemiBold"
+                                                               VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Width="48" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding Detail}" Style="{StaticResource Small}" VerticalAlignment="Center"/>
+                                                </DockPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
                                 </StackPanel>
-                            </Border>
+                            </StackPanel>
+                        </Border>
 
-                            <Border x:Name="MicroclimateCard" Style="{StaticResource Card}">
-                                <StackPanel>
+                        <Border x:Name="MicroclimateCard" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <ToggleButton x:Name="MicroclimateToggle" Style="{StaticResource CardHeader}" IsChecked="True" AutomationProperties.Name="Mikroklima">
                                     <DockPanel>
                                         <TextBlock Style="{StaticResource CardGlyph}" Text="&#xE706;"/>
                                         <TextBlock Style="{StaticResource CardTitle}" Text="Mikroklima"/>
                                         <TextBlock x:Name="MicroclimateMeta" Style="{StaticResource CardMeta}"/>
                                     </DockPanel>
-                                    <TextBlock x:Name="MicroclimateState" Style="{StaticResource CardState}"/>
-                                    <StackPanel x:Name="MicroclimateBody" Visibility="Collapsed" Margin="0,4,0,0">
-                                        <ItemsControl ItemsSource="{Binding Values}" Focusable="False" Margin="0,0,-14,0">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <UniformGrid Columns="2"/>
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <DockPanel Margin="0,6,14,0">
-                                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Value}" FontWeight="SemiBold" Margin="8,0,0,0"/>
-                                                        <TextBlock Text="{Binding Name}" Foreground="{StaticResource Muted}" TextTrimming="CharacterEllipsis"/>
-                                                    </DockPanel>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                        <TextBlock Text="{Binding Updated}" Style="{StaticResource Small}" Margin="0,8,0,0"/>
-                                    </StackPanel>
+                                </ToggleButton>
+                                <TextBlock x:Name="MicroclimateState" Style="{StaticResource CardState}"/>
+                                <StackPanel x:Name="MicroclimateBody" Visibility="Collapsed" Margin="0,4,0,0">
+                                    <ItemsControl ItemsSource="{Binding Values}" Focusable="False" Margin="0,0,-14,0">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <UniformGrid Columns="2"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <DockPanel Margin="0,6,14,0">
+                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Value}" FontWeight="SemiBold" Margin="8,0,0,0"/>
+                                                    <TextBlock Text="{Binding Name}" Foreground="{StaticResource Muted}" TextTrimming="CharacterEllipsis"/>
+                                                </DockPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Text="{Binding Updated}" Style="{StaticResource Small}" Margin="0,8,0,0"/>
                                 </StackPanel>
-                            </Border>
-                        </StackPanel>
-                    </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Border x:Name="ParkingCard" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <ToggleButton x:Name="ParkingToggle" Style="{StaticResource CardHeader}" IsChecked="True" AutomationProperties.Name="Parkování">
+                                    <DockPanel>
+                                        <TextBlock Style="{StaticResource CardGlyph}" Text="&#xE804;"/>
+                                        <TextBlock Style="{StaticResource CardTitle}" Text="Parkování"/>
+                                        <TextBlock x:Name="ParkingMeta" Style="{StaticResource CardMeta}"/>
+                                    </DockPanel>
+                                </ToggleButton>
+                                <TextBlock x:Name="ParkingState" Style="{StaticResource CardState}"/>
+                                <StackPanel x:Name="ParkingBody" Visibility="Collapsed" Margin="0,3,0,0">
+                                    <ItemsControl ItemsSource="{Binding Items}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <DockPanel Margin="0,6,0,0">
+                                                    <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Margin="10,0,0,0">
+                                                        <Run Text="{Binding Free, Mode=OneWay}" Foreground="{Binding FreeColor}" FontWeight="SemiBold"/>
+                                                        <Run Text="{Binding Capacity, Mode=OneWay}" Foreground="{StaticResource Muted}" FontSize="11.5"/>
+                                                    </TextBlock>
+                                                    <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                                                        <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold"/>
+                                                        <Run Text="{Binding Detail, Mode=OneWay}" Foreground="{StaticResource Muted}" FontSize="11.5"/>
+                                                    </TextBlock>
+                                                </DockPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Text="{Binding Machine}" Style="{StaticResource SmallOptional}" Margin="0,8,0,0"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border x:Name="NearbyCard" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <ToggleButton x:Name="NearbyToggle" Style="{StaticResource CardHeader}" IsChecked="True" AutomationProperties.Name="V okolí">
+                                    <DockPanel>
+                                        <TextBlock Style="{StaticResource CardGlyph}" Text="&#xE81D;"/>
+                                        <TextBlock Style="{StaticResource CardTitle}" Text="V okolí"/>
+                                        <TextBlock x:Name="NearbyMeta" Style="{StaticResource CardMeta}"/>
+                                    </DockPanel>
+                                </ToggleButton>
+                                <TextBlock x:Name="NearbyState" Style="{StaticResource CardState}"/>
+                                <StackPanel x:Name="NearbyBody" Visibility="Collapsed" Margin="0,2,0,0">
+                                    <ItemsControl ItemsSource="{Binding Items}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <!-- Dva řádky; adresa a otevírací doba celým textem jsou v bublině. -->
+                                                <StackPanel Margin="0,8,0,0" ToolTip="{Binding Detail}" Background="Transparent">
+                                                    <DockPanel>
+                                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Distance}" Style="{StaticResource Small}"
+                                                                   VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                    </DockPanel>
+                                                    <DockPanel>
+                                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Status}" Foreground="{Binding StatusColor}"
+                                                                   FontSize="11.5" FontWeight="SemiBold" Margin="10,0,0,0"/>
+                                                        <TextBlock Style="{StaticResource Small}">
+                                                            <Run Text="{Binding Kind, Mode=OneWay}" FontWeight="SemiBold"/>
+                                                            <Run Text="{Binding Address, Mode=OneWay}"/>
+                                                        </TextBlock>
+                                                    </DockPanel>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
                 </Grid>
             </ScrollViewer>
         </Grid>

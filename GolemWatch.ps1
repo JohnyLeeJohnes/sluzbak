@@ -5,12 +5,11 @@
 #   GolemWatch.ps1 -Demo                   místo sítě čte ukázková data ze složky demo (bez klíče i bez internetu)
 #   GolemWatch.ps1 -SettingsPath <soubor>  nastavení jinde než v %APPDATA% (pro testy)
 #   GolemWatch.ps1 -Screenshot <png>       po načtení uloží obrázek okna a skončí (obrázky do README)
-#   GolemWatch.ps1 -Page <Traffic|Around>  záložka, kterou okno otevře (hodí se k -Screenshot)
-param([switch]$Install, [switch]$Demo, [string]$SettingsPath, [string]$Screenshot, [string]$Page)
+param([switch]$Install, [switch]$Demo, [string]$SettingsPath, [string]$Screenshot)
 
 $ErrorActionPreference = 'Stop'
 # Číslo vydání. Musí sedět s nejnovější verzí v CHANGELOG.md (hlídá tests/unit.ps1), bere si ho tools/make-release.ps1.
-$version = '0.2.1'
+$version = '0.3.0'
 $icon = Join-Path $PSScriptRoot 'assets\golemwatch.ico'
 $library = Join-Path $PSScriptRoot 'Golemio.ps1'
 $demoDirectory = Join-Path $PSScriptRoot 'demo'
@@ -64,16 +63,15 @@ if ($Screenshot) { $Screenshot = Resolve-Target $Screenshot }
 $demoPlace = @{ Name = 'Náměstí Míru, Praha 2'; Latitude = 50.0753; Longitude = 14.4379 }
 $unnamed = 'Vlastní místo'
 
-# Přehled má záložky a na každé několik sekcí (karet). Ke každé sekci patří funkce Get-<sekce> v Golemio.ps1,
-# v přehledu prvky <sekce>Card, <sekce>Meta, <sekce>State a <sekce>Body a v nastavení štítek <sekce>Chip.
-# Záložka má v okně tlačítko <záložka>Tab a mřížku <záložka>Page se sloupci <záložka>Column1 až 3.
-$pages = [ordered]@{
-    Traffic = 'Transit', 'Vehicles', 'Alerts', 'Parking', 'Cars', 'Cycling'
-    Around = 'Waste', 'Nearby', 'Air', 'Microclimate'
-}
-$sections = @($pages.Values | ForEach-Object { $_ })
+# Sekce (karty) přehledu v pořadí, v jakém jsou v okně po sloupcích. Ke každé patří funkce Get-<sekce>
+# v Golemio.ps1, v přehledu prvky <sekce>Card, <sekce>Toggle (záhlaví, které kartu sbaluje), <sekce>Meta,
+# <sekce>State a <sekce>Body a v nastavení štítek <sekce>Chip.
+$sections = 'Transit', 'Vehicles', 'Waste', 'Alerts', 'Cars', 'Cycling', 'Air', 'Microclimate', 'Parking', 'Nearby'
 # Sekce, kde jde o minuty, se obnovují s odjezdy; ostatním stačí jednou za deset minut.
 $live = 'Transit', 'Vehicles'
+# Sekce dole na stránce. Všechny karty naráz se do limitu API nevejdou (první načtení je přes 30 dotazů,
+# limit 18 za 8 s), tak tyhle počkají, až se dočtou ty nahoře; jinak by na místo v limitu čekaly odjezdy.
+$background = 'Parking', 'Nearby', 'Cars', 'Cycling'
 # Sekce, která se nespojila, to zkusí znovu dřív než za deset minut.
 $retryEvery = [TimeSpan]::FromSeconds(30)
 # Sekce, která kvůli limitu API něco odložila (Pending), to zkusí, jakmile se okno limitu vyprázdní.
@@ -90,8 +88,8 @@ $limits = [ordered]@{
 }
 
 $state = @{
-    # Uložené nastavení: @{ Token; Name; Latitude; Longitude; Options }, kde Options jsou číselné volby
-    # a Hidden = sekce, které uživatel v přehledu nechce.
+    # Uložené nastavení: @{ Token; Name; Latitude; Longitude; Options }, kde Options jsou číselné volby,
+    # Hidden = sekce, které uživatel v přehledu nechce, a Collapsed = sekce, které má sbalené.
     Saved = $null
     Trial = $false         # přehled s ukázkovými daty, nic se neukládá
     Generation = 0         # zvýší se při změně místa; výsledky starších úloh se zahodí
@@ -101,7 +99,8 @@ $state = @{
     Manual = $false        # načítání, o které si řekl uživatel; jen to se v záhlaví ohlašuje
     Finding = $false       # běží hledání adresy
     Found = $null          # naposledy nalezená adresa; Enter v poli s ní ukládá, místo aby hledal znovu
-    Page = $null           # otevřená záložka; načítají a obnovují se jen její sekce
+    Collapsed = @()        # sbalené sekce: ukazují jen záhlaví a nenačítají se
+    Shows = @{}            # sekce -> co má pod záhlavím: 'Body' (data), jinak stavový text
     Due = @{}              # sekce -> kdy se má znovu načíst (chybí = hned, jak bude vidět)
     District = ''          # městská část, ve které místo leží
     ShotDue = $null
@@ -111,7 +110,7 @@ function Test-Demo { $Demo -or $state.Trial }
 function Get-Place { if ($state.Trial) { $demoPlace } else { $state.Saved } }
 
 function Get-DefaultOptions {
-    $options = @{ Hidden = @() }
+    $options = @{ Hidden = @(); Collapsed = @() }
     foreach ($name in $limits.Keys) { $options[$name] = $defaultOptions[$name] }
     $options
 }
@@ -121,6 +120,8 @@ function Get-Sections {
     $hidden = @((Get-Options).Hidden)
     $sections | Where-Object { $_ -notin $hidden }
 }
+# Sekce, které mají co ukazovat: zapnuté a rozbalené. Jen ty se načítají a obnovují.
+function Get-ActiveSections { @(Get-Sections | Where-Object { $_ -notin $state.Collapsed }) }
 # Za jak dlouho se má sekce načíst znovu. Pomalé sekce drží krok s pamětí odpovědí v Golemio.ps1:
 # dřív by stejně dostaly jen to, co už mají.
 function Get-Every([string]$name) {
@@ -152,7 +153,10 @@ function Read-Settings {
         $token = [Net.NetworkCredential]::new('', (ConvertTo-SecureString $saved.token)).Password
         if ($token -and $null -ne $saved.latitude -and $null -ne $saved.longitude) {
             # Volby mohou chybět (soubor ze starší verze) nebo být přepsané ručně; ConvertTo-Option si poradí s obojím.
-            $options = @{ Hidden = @(@($saved.options.hidden) | Where-Object { $_ -in $sections }) }
+            $options = @{
+                Hidden = @(@($saved.options.hidden) | Where-Object { $_ -in $sections })
+                Collapsed = @(@($saved.options.collapsed) | Where-Object { $_ -in $sections })
+            }
             foreach ($name in $limits.Keys) { $options[$name] = ConvertTo-Option $name $saved.options.$name }
             return @{
                 Token = $token
@@ -171,6 +175,7 @@ function Save-Settings($settings) {
     $options = [ordered]@{}
     foreach ($name in $limits.Keys) { $options[$name.Substring(0, 1).ToLower() + $name.Substring(1)] = $settings.Options[$name] }
     $options.hidden = @($settings.Options.Hidden)
+    $options.collapsed = @($settings.Options.Collapsed)
     $json = [ordered]@{
         token = ConvertTo-SecureString $settings.Token -AsPlainText -Force | ConvertFrom-SecureString
         place = $settings.Name
@@ -238,12 +243,44 @@ function Show-View([string]$name) {
     }
 }
 
+# Pod záhlavím karty je buď stavový text, nebo data; sbalená karta ukazuje jen záhlaví.
+function Update-Card([string]$name) {
+    $collapsed = $name -in $state.Collapsed
+    $shows = if ($collapsed) { '' } elseif ($state.Shows[$name] -eq 'Body') { 'Body' } else { 'State' }
+    $ui["${name}State"].Visibility = if ($shows -eq 'State') { 'Visible' } else { 'Collapsed' }
+    $ui["${name}Body"].Visibility = if ($shows -eq 'Body') { 'Visible' } else { 'Collapsed' }
+    # Sbalená karta se nenačítá, takže by údaj v záhlaví jen stárnul.
+    $ui["${name}Meta"].Visibility = if ($collapsed) { 'Collapsed' } else { 'Visible' }
+    $ui["${name}Toggle"].IsChecked = -not $collapsed
+}
+
 # Stav sekce místo dat: načítání, prázdno nebo chyba.
 function Show-State([string]$name, [string]$text, [switch]$IsError) {
     $ui["${name}State"].Text = $text
     $ui["${name}State"].Foreground = $window.FindResource($(if ($IsError) { 'Danger' } else { 'Muted' }))
-    $ui["${name}State"].Visibility = 'Visible'
-    $ui["${name}Body"].Visibility = 'Collapsed'
+    $state.Shows[$name] = 'State'
+    Update-Card $name
+}
+
+function Get-LoadingText([string]$name) { if ($name -eq 'Transit') { 'Hledám zastávky v okolí…' } else { 'Načítám…' } }
+
+# Sbalení se pamatuje hned, bez tlačítka Uložit. Ukázka z tlačítka nic neukládá.
+function Set-Collapsed([string]$name, [bool]$collapsed) {
+    # Záhlaví hlásí každou změnu zaškrtnutí, i tu, kterou udělal Update-Card; ta už tady nic nemění.
+    if (($name -in $state.Collapsed) -eq $collapsed) { return }
+    $state.Collapsed = @($sections | Where-Object { if ($_ -eq $name) { $collapsed } else { $_ -in $state.Collapsed } })
+    if ($state.Saved -and -not $state.Trial) {
+        $state.Saved.Options.Collapsed = $state.Collapsed
+        # Když se to nezapíše, karta jen příště začne rozbalená; kvůli tomu se okno hláškou nepřerušuje.
+        try { Save-Settings $state.Saved } catch { }
+    }
+    # Co mezitím zestárlo, se po rozbalení neukáže jako aktuální: nejdřív se načte znovu.
+    if (-not $collapsed -and (-not $state.Due.ContainsKey($name) -or [DateTime]::UtcNow -ge $state.Due[$name])) {
+        $ui["${name}Meta"].Text = ''
+        Show-State $name (Get-LoadingText $name)
+    }
+    Update-Card $name
+    if (-not $collapsed) { Start-Due }
 }
 
 function Reset-Sections {
@@ -256,14 +293,8 @@ function Reset-Sections {
     foreach ($name in $sections) {
         $ui["${name}Meta"].Text = ''
         $ui["${name}Body"].DataContext = $null
-        Show-State $name $(if ($name -eq 'Transit') { 'Hledám zastávky v okolí…' } else { 'Načítám…' })
+        Show-State $name (Get-LoadingText $name)
     }
-}
-
-# Zapnuté sekce jedné záložky.
-function Get-PageSections([string]$page) {
-    $shown = @(Get-Sections)
-    @($pages[$page] | Where-Object { $_ -in $shown })
 }
 
 function Start-Section([string]$name) {
@@ -279,13 +310,15 @@ function Start-Section([string]$name) {
     Start-Work $name "Get-$name" $arguments 'Complete-Section'
 }
 
-# Načte, co je na otevřené záložce na řadě. Co vidět není, se nestahuje: šetří to limit API.
+# Načte, co je na řadě. Vypnuté a sbalené karty se nestahují: šetří to API.
 function Start-Due {
-    if (-not $state.Page) { return }
     $now = [DateTime]::UtcNow
-    foreach ($name in @(Get-PageSections $state.Page)) {
-        if (-not $state.Due.ContainsKey($name) -or $now -ge $state.Due[$name]) { Start-Section $name }
-    }
+    $due = @(Get-ActiveSections | Where-Object { -not $state.Due.ContainsKey($_) -or $now -ge $state.Due[$_] })
+    foreach ($name in $due) { if ($name -notin $background) { Start-Section $name } }
+    # Karty dole přijdou na řadu, až když se žádná z těch nahoře nenačítá (viz $background).
+    $generation = $state.Generation
+    if ($jobs | Where-Object { $_.Done -eq 'Complete-Section' -and $_.Generation -eq $generation -and $_.Key -notin $background }) { return }
+    foreach ($name in $due) { if ($name -in $background) { Start-Section $name } }
 }
 
 function Complete-Section($job, $result) {
@@ -312,56 +345,41 @@ function Complete-Section($job, $result) {
     if ($data.Empty) { Show-State $name $data.Empty; return }
 
     $ui["${name}Body"].DataContext = $data
-    $ui["${name}State"].Visibility = 'Collapsed'
-    $ui["${name}Body"].Visibility = 'Visible'
+    $state.Shows[$name] = 'Body'
+    Update-Card $name
 }
 
-# Obnovení, o které si řekl uživatel (tlačítko, F5): projde všechno na otevřené záložce. Na síť se přitom
+# Obnovení, o které si řekl uživatel (tlačítko, F5): projde všechny rozbalené karty. Na síť se přitom
 # jde jen pro to, co už není čerstvé (viz paměť odpovědí v Golemio.ps1), takže mačkání F5 API nezatíží.
 function Update-Sections {
     $state.Manual = $true
-    foreach ($name in @(Get-PageSections $state.Page)) { Start-Section $name }
+    # Termíny se zahodí a o pořadí se postará Start-Due.
+    foreach ($name in @(Get-ActiveSections)) { $state.Due.Remove($name) }
+    Start-Due
 }
 
-function Show-Page([string]$page) {
-    $state.Page = $page
-    foreach ($name in $pages.Keys) {
-        $ui["${name}Page"].Visibility = if ($name -eq $page) { 'Visible' } else { 'Collapsed' }
-        $ui["${name}Tab"].IsChecked = $name -eq $page
-    }
-    $ui.DashboardScroll.ScrollToTop()
-    if ($ui.DashboardView.IsEnabled) { Start-Due }
-}
-
-# Schová karty, které uživatel vypnul, sloupce, ve kterých žádná nezbyla (ať po nich nezůstane díra),
-# a záložky, na kterých by nebylo nic.
+# Schová karty, které uživatel vypnul, a sloupce, ve kterých žádná nezbyla (ať po nich nezůstane díra).
 function Update-Layout {
     $shown = @(Get-Sections)
     foreach ($name in $sections) {
         $ui["${name}Card"].Visibility = if ($name -in $shown) { 'Visible' } else { 'Collapsed' }
+        Update-Card $name
     }
 
-    $open = @()
-    foreach ($page in $pages.Keys) {
-        # V mřížce jsou sudé sloupce karty a liché mezery mezi nimi.
-        $columns = $ui["${page}Page"].ColumnDefinitions
-        $used = 0
-        foreach ($index in 0..2) {
-            $any = @($ui["${page}Column$($index + 1)"].Children | Where-Object { $_.Visibility -eq 'Visible' }).Count -gt 0
-            $columns[$index * 2].Width = [Windows.GridLength]::new($(if ($any) { $columnWeights[$page][$index] } else { 0 }), 'Star')
-            if ($index -gt 0) {
-                $columns[$index * 2 - 1].Width = [Windows.GridLength]::new($(if ($any -and $used -gt 0) { $columnGap } else { 0 }))
-            }
-            if ($any) { $used++ }
+    # V mřížce jsou sudé sloupce karty a liché mezery mezi nimi.
+    $columns = $ui.DashboardGrid.ColumnDefinitions
+    $used = 0
+    foreach ($index in 0..2) {
+        $any = @($ui["Column$($index + 1)"].Children | Where-Object { $_.Visibility -eq 'Visible' }).Count -gt 0
+        $columns[$index * 2].Width = [Windows.GridLength]::new($(if ($any) { $columnWeights[$index] } else { 0 }), 'Star')
+        if ($index -gt 0) {
+            $columns[$index * 2 - 1].Width = [Windows.GridLength]::new($(if ($any -and $used -gt 0) { $columnGap } else { 0 }))
         }
-        # Jeden nebo dva sloupce přes celé okno by byly zbytečně široké.
-        $ui["${page}Page"].MaxWidth = if ($used -eq 3) { [double]::PositiveInfinity } else { 560 * $used }
-        $ui["${page}Tab"].Visibility = if ($used) { 'Visible' } else { 'Collapsed' }
-        if ($used) { $open += $page }
+        if ($any) { $used++ }
     }
-    # S jedinou záložkou není mezi čím přepínat.
-    $ui.Tabs.Visibility = if ($open.Count -gt 1) { 'Visible' } else { 'Collapsed' }
-    Show-Page $(if ($state.Page -in $open) { $state.Page } else { $open[0] })
+    # Jeden nebo dva sloupce přes celé okno by byly zbytečně široké.
+    $ui.DashboardGrid.MaxWidth = if ($used -eq 3) { [double]::PositiveInfinity } else { 560 * $used }
+    if ($ui.DashboardView.IsEnabled) { Start-Due }
 }
 
 function Update-Header {
@@ -393,11 +411,12 @@ function Show-Dashboard([switch]$Reload) {
     if ($Reload) {
         Reset-Sections
         $state.Manual = $true
+        $ui.DashboardScroll.ScrollToTop()
         $place = Get-Place
         Start-Work 'District' 'Get-District' @((Get-Context), $place.Latitude, $place.Longitude) 'Complete-District'
     }
     Update-Place
-    # Update-Layout otevře záložku a tím spustí načítání toho, co je na ní na řadě.
+    # Update-Layout zároveň spustí načítání toho, co je na řadě.
     Update-Layout
 }
 
@@ -504,7 +523,8 @@ function Save-Setup {
         return
     }
 
-    $options = @{ Hidden = @($sections | Where-Object { -not $ui["${_}Chip"].IsChecked }) }
+    # Sbalení karet se v nastavení nemění, jen se s ním uloží to, co je teď v přehledu.
+    $options = @{ Hidden = @($sections | Where-Object { -not $ui["${_}Chip"].IsChecked }); Collapsed = @($state.Collapsed) }
     if ($options.Hidden.Count -eq $sections.Count) {
         Set-SetupStatus 'Nech zapnutou aspoň jednu kartu.' -IsError
         return
@@ -576,21 +596,17 @@ try {
     'SetupView', 'TokenBox', 'KeyLink', 'AddressBox', 'FindButton', 'ResultsList', 'LatitudeBox', 'LongitudeBox',
     'LimitsHint', 'SaveButton', 'SetupStatus', 'BackButton', 'DemoButton', 'VersionText',
     'DashboardView', 'PlaceText', 'CoordinatesText', 'DemoBadge', 'UpdatedText', 'RefreshButton', 'SettingsButton',
-    'DashboardScroll', 'Tabs' | ForEach-Object { $ui[$_] = $window.FindName($_) }
+    'DashboardScroll', 'DashboardGrid', 'Column1', 'Column2', 'Column3' | ForEach-Object { $ui[$_] = $window.FindName($_) }
     foreach ($name in $sections) {
-        'Card', 'Meta', 'State', 'Body', 'Chip' | ForEach-Object { $ui["$name$_"] = $window.FindName("$name$_") }
+        'Card', 'Toggle', 'Meta', 'State', 'Body', 'Chip' | ForEach-Object { $ui["$name$_"] = $window.FindName("$name$_") }
     }
     foreach ($name in $limits.Keys) { $ui["${name}Box"] = $window.FindName("${name}Box") }
-    # Šířky sloupců záložek jsou napsané v XAML; odsud se berou, když se sloupec schová a zase ukáže.
-    $columnWeights = @{}
-    foreach ($name in $pages.Keys) {
-        'Tab', 'Page', 'Column1', 'Column2', 'Column3' | ForEach-Object { $ui["$name$_"] = $window.FindName("$name$_") }
-        $definitions = $ui["${name}Page"].ColumnDefinitions
-        $columnWeights[$name] = @(0, 2, 4 | ForEach-Object { $definitions[$_].Width.Value })
-        $columnGap = $definitions[1].Width.Value
-    }
     $missing = @($ui.Keys | Where-Object { $null -eq $ui[$_] } | Sort-Object)
     if ($missing) { throw "V GolemWatch.xaml chybí prvky: $($missing -join ', ')" }
+    # Šířky sloupců přehledu jsou napsané v XAML; odsud se berou, když se sloupec schová a zase ukáže.
+    $definitions = $ui.DashboardGrid.ColumnDefinitions
+    $columnWeights = @(0, 2, 4 | ForEach-Object { $definitions[$_].Width.Value })
+    $columnGap = $definitions[1].Width.Value
 
     # Na malém displeji by okno ve výchozí velikosti přečnívalo přes okraj obrazovky.
     $area = [Windows.SystemParameters]::WorkArea
@@ -683,10 +699,11 @@ try {
 
     $ui.RefreshButton.Add_Click({ Update-Sections })
     $ui.SettingsButton.Add_Click({ Show-Setup })
-    foreach ($name in $pages.Keys) {
-        $ui["${name}Tab"].Tag = $name
-        # Show-Page záložku sama zaškrtává; bez podmínky by se volala dvakrát.
-        $ui["${name}Tab"].Add_Checked({ param($tab) if ($state.Page -ne $tab.Tag) { Show-Page $tab.Tag } })
+    foreach ($name in $sections) {
+        $ui["${name}Toggle"].Tag = $name
+        # Checked a Unchecked, ne Click: čtečka obrazovky záhlaví přepíná bez kliknutí.
+        $ui["${name}Toggle"].Add_Checked({ param($toggle) Set-Collapsed $toggle.Tag $false })
+        $ui["${name}Toggle"].Add_Unchecked({ param($toggle) Set-Collapsed $toggle.Tag $true })
     }
     $window.Add_KeyDown({
         param($source, $e)
@@ -699,11 +716,14 @@ try {
     $timer.Interval = [TimeSpan]::FromMilliseconds(200)
     $timer.Add_Tick({
         Complete-Work
+        # Schované nebo minimalizované okno nic nestahuje; po návratu se obnoví hned. Před záhlavím proto,
+        # aby "načítám…" vydrželo i mezi kartami nahoře a těmi, které na ně čekají.
+        if ($ui.DashboardView.IsEnabled -and $window.WindowState -ne 'Minimized') { Start-Due }
         Update-Header
 
         if ($Screenshot) {
-            # Nastavení je hotové hned, přehled až se dočtou sekce otevřené záložky; pak ještě chvilka na vykreslení.
-            $ready = $ui.SetupView.IsEnabled -or @(Get-PageSections $state.Page | Where-Object { -not $state.Finished[$_] }).Count -eq 0
+            # Nastavení je hotové hned, přehled až se dočtou rozbalené karty; pak ještě chvilka na vykreslení.
+            $ready = $ui.SetupView.IsEnabled -or @(Get-ActiveSections | Where-Object { -not $state.Finished[$_] }).Count -eq 0
             if ($ready -and -not $state.ShotDue) {
                 # Okno se natáhne, aby byl na obrázku celý přehled, ne jen to, co se vejde bez posouvání.
                 $window.UpdateLayout()
@@ -717,17 +737,15 @@ try {
                 return
             }
         }
-
-        # Schované nebo minimalizované okno nic nestahuje; po návratu se obnoví hned.
-        if (-not $ui.DashboardView.IsEnabled -or $window.WindowState -eq 'Minimized') { return }
-        Start-Due
     })
 
     $ui.VersionText.Text = "GolemWatch $version"
-    if ($Page -in $pages.Keys) { $state.Page = $Page }
 
     $state.Saved = Read-Settings
-    if ($state.Saved) { Show-Dashboard -Reload }
+    if ($state.Saved) {
+        $state.Collapsed = @($state.Saved.Options.Collapsed)
+        Show-Dashboard -Reload
+    }
     elseif ($Demo) {
         $state.Trial = $true
         Show-Dashboard -Reload

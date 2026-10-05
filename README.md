@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/prehled.png" width="860" alt="Záložka Doprava: odjezdy, vozidla v okolí, výluky, parkování, sdílená auta a cyklosčítač">
+  <img src="docs/prehled.png" width="860" alt="Přehled: odjezdy, vozidla v okolí, svoz odpadu, výluky, sdílená auta, cyklosčítač, ovzduší, mikroklima, parkování a místa v okolí">
 </p>
 
 Zadáš svůj klíč ke [Golemio API](https://api.golemio.cz/docs/openapi/) a adresu. GolemWatch pak ukazuje, co se
@@ -24,40 +24,33 @@ děje v okolí, a sám se obnovuje. Vyzkoušeno se skutečným klíčem i daty (
 
 ## Co ukazuje
 
-Přehled má dvě záložky, obě se vejdou do okna bez posouvání. Pod názvem místa je i městská část, ve které leží.
-
-**Doprava**
+Všechno je na jedné stránce ve třech sloupcích; co se do okna nevejde, je o kousek níž. Pod názvem místa je
+i městská část, ve které leží.
 
 | Karta | Co v ní je | Odkud |
 | --- | --- | --- |
 | Odjezdy | nejbližší odjezdy ze zastávek do 600 m, zpoždění, zrušené spoje, mimořádnosti na zastávce | `/v2/gtfs/stops`, `/v2/pid/departureboards` |
 | Právě jede kolem | tramvaje, autobusy a metro do 1 km: linka, kam jede, směr jízdy, zpoždění | `/v2/public/vehiclepositions`, `/v2/public/gtfs/trips` |
-| Výluky a mimořádnosti | co PID právě hlásí v celé síti, kterých zastávek se to týká a do kdy | `/v3/pid/infotexts` |
-| Parkování | šest nejbližších parkovišť do 1,5 km, volná místa, kde se měří, a nejbližší parkovací automat | `/v3/parking`, `/v3/parking-measurements`, `/v3/parking-machines` |
-| Sdílená auta | pět nejbližších volných aut do 1,5 km: provozovatel, palivo, dostupnost | `/v2/sharedcars` |
-| Cyklosčítač | kolik kol dnes projelo kolem nejbližšího sčítače, po směrech | `/v2/bicyclecounters` |
-
-<p align="center">
-  <img src="docs/okoli.png" width="860" alt="Záložka Okolí: svoz odpadu, místa v okolí, ovzduší a mikroklima">
-</p>
-
-**Okolí**
-
-| Karta | Co v ní je | Odkud |
-| --- | --- | --- |
 | Svoz odpadu | tři nejbližší stanoviště tříděného odpadu do 400 m, dny svozu, příští svoz, zaplnění podle senzoru | `/v2/sortedwastestations` |
 | | velkoobjemové kontejnery do 1,5 km, které teprve přijedou | `/v1/bulky-waste/stations` |
-| V okolí | nejbližší lékárna, nemocnice, knihovna, úřad, služebna městské policie, sběrný dvůr, hřiště a zahrada | `/v2/medicalinstitutions`, `/v2/municipallibraries`, `/v2/municipalauthorities`, `/v2/municipalpolicestations`, `/v2/wastecollectionyards`, `/v2/playgrounds`, `/v2/gardens` |
+| Výluky a mimořádnosti | co PID právě hlásí v celé síti, kterých zastávek se to týká a do kdy | `/v3/pid/infotexts` |
+| Sdílená auta | pět nejbližších volných aut do 1,5 km: provozovatel, palivo, dostupnost | `/v2/sharedcars` |
+| Cyklosčítač | kolik kol dnes projelo kolem nejbližšího sčítače, po směrech | `/v2/bicyclecounters` |
 | Ovzduší | index kvality a naměřené látky z nejbližší stanice ČHMÚ | `/v2/airqualitystations` |
 | Mikroklima | teplota, vlhkost, tlak, vítr a srážky z nejbližšího městského senzoru, který měří | `/v2/microclimate/points`, `/v2/microclimate/measurements` |
+| Parkování | šest nejbližších parkovišť do 1,5 km, volná místa, kde se měří, a nejbližší parkovací automat | `/v3/parking`, `/v3/parking-measurements`, `/v3/parking-machines` |
+| V okolí | nejbližší lékárna, nemocnice, knihovna, úřad, služebna městské policie, sběrný dvůr, hřiště a zahrada | `/v2/medicalinstitutions`, `/v2/municipallibraries`, `/v2/municipalauthorities`, `/v2/municipalpolicestations`, `/v2/wastecollectionyards`, `/v2/playgrounds`, `/v2/gardens` |
 
-Vzdálenosti v tabulkách jsou výchozí; okruh pro zastávky, tříděný odpad a parkoviště si v nastavení změníš,
-stejně jako to, které karty chceš vidět. Záložka, na které nenecháš žádnou kartu, zmizí.
+**Každá karta jde sbalit.** Klikni na její záhlaví (nebo na něm zmáčkni mezerník) a zůstane z ní jen řádek
+s názvem; dalším kliknutím ji rozbalíš. Sbalená karta se nestahuje a po rozbalení se načte. Co máš sbalené,
+si aplikace pamatuje. Kartu, kterou nechceš vidět vůbec, vypneš v nastavení; sloupec, ve kterém žádná
+nezbude, se zavře.
+
+Vzdálenosti v tabulce jsou výchozí; okruh pro zastávky, tříděný odpad a parkoviště si v nastavení změníš.
 
 Odjezdy a vozidla se obnovují každých 30 sekund (jde změnit), všechno ostatní každých 10 minut. Tlačítko
 **Obnovit** a klávesa F5 načtou hned odjezdy a vozidla; ostatní odpovědi si aplikace 10 minut pamatuje
-a dřív se pro ně na síť nejde. Stahuje se jen záložka, na kterou se díváš; minimalizované okno nestahuje nic
-a po návratu se obnoví hned.
+a dřív se pro ně na síť nejde. Minimalizované okno nestahuje nic a po návratu se obnoví hned.
 
 ## Instalace
 
@@ -107,17 +100,25 @@ v přehledu.
 - **Co kam odchází.** Klíč a souřadnice jdou jen na `api.golemio.cz`. Adresa, kterou hledáš, jde službě
   [Nominatim](https://nominatim.openstreetmap.org/) (OpenStreetMap), a to jen po kliknutí na **Najít**.
   Když souřadnice vyplníš ručně, nikam jinam se nic neposílá.
-- **Kde je nastavení.** V `%APPDATA%\GolemWatch\settings.json`: klíč, název místa, souřadnice a volby. Klíč
-  šifruje Windows (DPAPI), takže ho přečte jen tvůj účet na tomhle počítači. Na jiném počítači ho zadáš znovu.
+- **Kde je nastavení.** V `%APPDATA%\GolemWatch\settings.json`: klíč, název místa, souřadnice, volby a to,
+  které karty máš sbalené. Klíč šifruje Windows (DPAPI), takže ho přečte jen tvůj účet na tomhle počítači.
+  Na jiném počítači ho zadáš znovu.
   Dočasná složka (`%TEMP%`) by nestačila: Windows ji při úklidu maže a aplikace by nastavení zapomněla.
 - **Šetří API.** Golemio dovoluje 20 dotazů za 8 sekund na jeden klíč. Aplikace si dotazy počítá a když by
   limit překročila, chvilku počká. Hlavně se ale neptá zbytečně: odpovědi si pamatuje (měření, svozy,
   obsazenost a místa 10 minut, odjezdy a polohy vozidel 10 sekund, číselníky a zastávky kolem tebe po celou
-  dobu běhu). Mačkání **Obnovit**, přepínání záložek ani uložení nastavení tak nic nestahují znovu. První
-  načtení obou záložek je kolem 34 dotazů, opakované do deseti minut žádný až tři. Paměť je jen v běžící
-  aplikaci, na disk se nic neukládá.
-- **Kam vozidla jedou, naskočí o chvilku později.** Cíl každého vozidla je dotaz navíc. Při startu se proto
-  nejdřív načtou odjezdy a ostatní karty a cíle se doplní zhruba po devíti sekundách.
+  dobu běhu). Mačkání **Obnovit**, rozbalení karty ani uložení nastavení tak nic nestahují znovu. Paměť je
+  jen v běžící aplikaci, na disk se nic neukládá.
+- **Karty dole naskočí o pár sekund později.** První načtení všech karet je kolem 34 dotazů, tedy víc, než
+  limit pustí naráz. Nejdřív se proto načtou odjezdy, vozidla, odpad, výluky, ovzduší a mikroklima a teprve
+  po nich parkování, místa v okolí, sdílená auta a cyklosčítač; na zbytek z nich se čeká, než se limit po
+  osmi sekundách uvolní. Opakované načtení do deseti minut je žádný až tři dotazy.
+- **Kam vozidla jedou, se doplní nakonec.** Cíl každého vozidla je dotaz navíc, takže se na ně ptá, až když
+  je v limitu místo. Do té doby karta ukazuje linky, zpoždění a vzdálenost.
+- **Barvy u odpadu jsou barvy kontejnerů:** modrá papír, žlutá plasty a nápojové kartony, zelená barevné
+  sklo, bílá čiré sklo, šedá kovy, červená elektro, fialová jedlé oleje (podle víka nádoby). Žlutému
+  kontejneru říká Golemio „Multikomoditní sběr“; aplikace píše rovnou, co do něj patří. Směsný odpad (černé
+  popelnice) v datech o tříděném odpadu není.
 - **Co běžný klíč nesmí.** K některým datům Golemio pouští jen na požádání (`golemio@operatorict.cz`). Klíč
   z registrace neprošel (zkoušeno 5. 10. 2026) k velkoobjemovým kontejnerům, sdíleným kolům, dopravním
   omezením, intenzitě dopravy, sčítačům chodců, hlášení závad ani k energetice. Velkoobjemové kontejnery
@@ -149,7 +150,7 @@ v přehledu.
 | `tools/make-release.ps1` | Sestaví ZIP pro stránku Releases do `dist/`. |
 | `tests/unit.ps1` | Testy čtení dat nad ukázkovými odpověďmi. |
 | `tests/e2e.ps1` | Test, který aplikaci prokliká přes UI Automation. |
-| `tests/keys.ps1` | Test klávesnice v nastavení: Enter, šipky a kliknutí na nalezenou adresu. |
+| `tests/keys.ps1` | Test klávesnice v nastavení (Enter, šipky, kliknutí na nalezenou adresu), pořadí načítání a sbalování karet. |
 | `tests/live.ps1` | Zkouška naživo: načte všechny karty ze skutečného API a vypíše, co která dostala. |
 
 Chceš jiné barvy? Celá paleta je na začátku `GolemWatch.xaml`. Změny se projeví při dalším spuštění, nic se
@@ -189,10 +190,6 @@ powershell -ExecutionPolicy Bypass -File GolemWatch.ps1 -Demo
 
 ```
 powershell -ExecutionPolicy Bypass -File GolemWatch.ps1 -Demo -Screenshot docs\prehled.png
-```
-
-```
-powershell -ExecutionPolicy Bypass -File GolemWatch.ps1 -Demo -Page Around -Screenshot docs\okoli.png
 ```
 
 Změny se zapisují do [CHANGELOG.md](CHANGELOG.md).

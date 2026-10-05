@@ -173,7 +173,7 @@ function Test-RateRoom($limiter) {
 
 # ---- Paměť odpovědí ----
 # Jak dlouho (v sekundách) se smí odpověď použít znovu, než se pro ni jde na síť. Šetří to API i limit dotazů:
-# ruční obnovení, uložení nastavení ani návrat na záložku nestahují nic, co je ještě čerstvé.
+# ruční obnovení, uložení nastavení ani rozbalení karty nestahují nic, co je ještě čerstvé.
 $cacheSlow = 600                  # měření, svozy, obsazenost, místa: nejvýš jeden dotaz za 10 minut
 $cacheLive = 10                   # odjezdy a polohy vozidel; jen brzda proti opakovanému F5
 $cacheStatic = [int]::MaxValue    # číselníky, popisy spojů a zastávky kolem místa se za běhu nemění
@@ -331,11 +331,16 @@ function ConvertTo-Int($value) { if ($null -ne $value -and "$value" -ne '') { [i
 
 # ---- Svoz odpadu ----
 
-# Barvy kontejnerů podle druhu odpadu (id z API).
+# Barvy podle druhu odpadu (id z API) jsou ty, které mají kontejnery v Česku: barevné sklo zelená,
+# elektro červená, kovy šedá, nápojové kartony oranžová, papír modrá, plasty žlutá, čiré sklo bílá.
+# Na jedlé oleje má Praha černou nádobu s fialovým víkem. Směsný odpad (černá) v téhle datové sadě není.
 $wasteColors = @{
     1 = '#3FA34D'; 2 = '#E5484D'; 3 = '#A3A9B8'; 4 = '#F2994A'; 5 = '#3B82F6'
-    6 = '#F5C542'; 7 = '#E8EAF0'; 8 = '#B48EF2'; 9 = '#2DD4BF'
+    6 = '#F5C542'; 7 = '#E8EAF0'; 8 = '#B48EF2'; 9 = '#F5C542'
 }
+# "Multikomoditní sběr" (9) zní jako směsný odpad, ale je to žlutý kontejner: do něj se v Praze od roku 2024
+# hází plasty spolu s nápojovými kartony. API tomu jinak neřekne, tak se to tady přejmenuje.
+$wasteNames = @{ 9 = 'Plasty a nápojové kartony' }
 
 function Get-Waste($context, [double]$latitude, [double]$longitude) {
     $range = Get-Option $context 'WasteRange'
@@ -351,9 +356,13 @@ function Get-Waste($context, [double]$latitude, [double]$longitude) {
             $first = $_.Group[0]
             $next = @($_.Group | ForEach-Object { ConvertTo-Day $_.cleaning_frequency.next_pick } | Where-Object { $_ -and $_ -ge $now.Date } | Sort-Object)[0]
             $fill = @($_.Group | ForEach-Object { ConvertTo-Int $_.last_measurement.percent_calculated } | Where-Object { $null -ne $_ } | Sort-Object -Descending)[0]
-            $color = $wasteColors[[int](ConvertTo-Int $first.trash_type.id)]
+            $kind = [int](ConvertTo-Int $first.trash_type.id)
+            $color = $wasteColors[$kind]
             [pscustomobject]@{
-                Type = if ($first.trash_type.description) { [string]$first.trash_type.description } else { 'Odpad' }
+                Type =
+                    if ($wasteNames[$kind]) { $wasteNames[$kind] }
+                    elseif ($first.trash_type.description) { [string]$first.trash_type.description }
+                    else { 'Odpad' }
                 Color = if ($color) { $color } else { '#8C93A8' }
                 PickDays = [string]$first.cleaning_frequency.pick_days
                 Day = if ($next) { $next } else { [DateTime]::MaxValue }

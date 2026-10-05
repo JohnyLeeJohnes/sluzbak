@@ -55,9 +55,10 @@ function Invoke($id) { (Find $id).GetCurrentPattern([Windows.Automation.InvokePa
 function Toggle($id) { (Find $id).GetCurrentPattern([Windows.Automation.TogglePattern]::Pattern).Toggle(); Start-Sleep -Milliseconds 250 }
 function Toggled($id) { (Find $id).GetCurrentPattern([Windows.Automation.TogglePattern]::Pattern).Current.ToggleState }
 function Pick($name) { (FindNamed $name).GetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern).Select(); Start-Sleep -Milliseconds 250 }
-# Přepne záložku přehledu (TrafficTab, AroundTab).
-function Open($tab) { (Find $tab).GetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern).Select(); Start-Sleep -Milliseconds 400 }
 function States($names) { ($names | ForEach-Object { Shown "${_}State" }) -join ' ' }
+# Kolik bodů od levého okraje okna prvek začíná.
+function Left($id) { [int]((Find $id).Current.BoundingRectangle.Left - $script:window.Current.BoundingRectangle.Left) }
+function Collapsed { @(([IO.File]::ReadAllText($settings, [Text.Encoding]::UTF8) | ConvertFrom-Json).options.collapsed) -join ',' }
 function WaitFor([scriptblock]$condition, [int]$seconds = 15) {
     $until = [DateTime]::UtcNow.AddSeconds($seconds)
     while ([DateTime]::UtcNow -lt $until) {
@@ -71,12 +72,8 @@ function Check($what, $actual, $expected) {
     else { $script:fail++; "FAIL  $what = '$actual' (čekáno '$expected')" }
 }
 
-# Záložky přehledu a jejich sekce, stejně jako v GolemWatch.ps1.
-$pages = [ordered]@{
-    Traffic = 'Transit', 'Vehicles', 'Alerts', 'Parking', 'Cars', 'Cycling'
-    Around = 'Waste', 'Nearby', 'Air', 'Microclimate'
-}
-$sections = @($pages.Values | ForEach-Object { $_ })
+# Sekce přehledu ve stejném pořadí jako v GolemWatch.ps1.
+$sections = 'Transit', 'Vehicles', 'Waste', 'Alerts', 'Cars', 'Cycling', 'Air', 'Microclimate', 'Parking', 'Nearby'
 $needPlace = 'Najdi adresu, nebo vyplň souřadnice (třeba 50,0753 a 14,4379).'
 $null = New-Item -ItemType Directory -Force $temp
 $p = $null
@@ -112,6 +109,9 @@ try {
     Check 'ukázka: místo' (Text PlaceText) 'Náměstí Míru, Praha 2'
     Check 'ukázka: městská část za souřadnicemi' (WaitFor { (Text CoordinatesText) -eq '50.0753, 14.4379 · Praha 2' }) $true
     Check 'ukázka: štítek' (Named 'ukázková data') $true
+    Check 'ukázka: všechny karty jsou rozbalené' (($sections | ForEach-Object { Toggled "${_}Toggle" }) -join ' ') 'On On On On On On On On On On'
+    Toggle WasteToggle
+    Check 'ukázka: karta jde sbalit' "$(Shown WasteToggle) $(Shown WasteMeta) $(Named 'Náměstí Míru 820/9')" 'True False False'
     Check 'ukázka nic neukládá' (Test-Path $settings) $false
     Invoke SettingsButton
     Check 'z ukázky se dá vrátit' (Shown BackButton) $true
@@ -121,6 +121,7 @@ try {
     '--- nastavení od začátku do konce (s -Demo odpovídají ukázkové soubory i hledání adresy a ověření klíče)'
     $p = Launch -Demo
     Check 's -Demo a bez nastavení rovnou přehled' (WaitFor { Named 'Depo Hostivař' }) $true
+    Toggle WasteToggle
     Invoke SettingsButton
     SetValue TokenBox 'testovaci-klic'
     SetValue AddressBox 'náměstí Míru'
@@ -154,15 +155,14 @@ try {
     Check 'sdílená auta' (WaitFor { NamedLike '^Škoda Fabia\s+CAR4WAY · benzín · ihned$' }) $true
     Check 'cyklosčítač: sčítač, který něco napočítal' (WaitFor { (Text CyclingMeta) -eq 'Podolské nábřeží · 2,5 km' }) $true
     Check 'cyklosčítač: součet' (NamedLike '^2\s801\s+kol od půlnoci · trasa A 2$') $true
-    Check 'doprava: stavové texty jsou schované' (States $pages.Traffic) 'False False False False False False'
-    Check 'čas aktualizace' ((Text UpdatedText) -match '^aktualizováno \d{1,2}:\d\d$') $true
-    Check 'co není na otevřené záložce, se nenačítá' "$(Text AirMeta)|$(Text WasteMeta)|" '||'
-
-    Open AroundTab
-    Check 'záložka Okolí: doprava zmizela' "$(Shown TransitMeta) $(Shown WasteMeta)" 'False True'
-    Check 'odpad: stanoviště' (WaitFor { Named 'Náměstí Míru 820/9' }) $true
+    Check 'sbalení z ukázky se uložilo s nastavením' (Collapsed) 'Waste'
+    Check 'sbalená karta se nenačítá' "$(Shown WasteToggle) $(Shown WasteMeta) $(Text WasteMeta)|" 'True False |'
+    Toggle WasteToggle
+    Check 'rozbalená karta se načte' (WaitFor { Named 'Náměstí Míru 820/9' }) $true
     Check 'odpad: počet' (Text WasteMeta) '2 nejbližší'
+    Check 'odpad: žlutý kontejner má srozumitelné jméno' (NamedLike '^Plasty a nápojové kartony\s+Út, Čt, So$') $true
     Check 'odpad: velkoobjemový kontejner' (NamedLike 'Budečská × Francouzská$') $true
+    Check 'rozbalení se uložilo' (Collapsed) ''
     Check 'ovzduší: index' (WaitFor { Named 'Přijatelná' }) $true
     Check 'ovzduší: stanice' (Text AirMeta) 'Praha 2-Legerova · 620 m'
     Check 'mikroklima: hodnota' (WaitFor { Named '14,2 °C' }) $true
@@ -171,9 +171,17 @@ try {
     Check 'v okolí: otevírací doba' (Named 'otevřeno nonstop') $true
     Check 'v okolí: sběrný dvůr' (Named 'Sběrný dvůr Perucká') $true
     Check 'v okolí: nemocnice a hřiště' "$(Named 'Všeobecná fakultní nemocnice v Praze') $(Named 'Riegrovy sady - Na Smetance')" 'True True'
-    Check 'okolí: stavové texty jsou schované' (States $pages.Around) 'False False False False'
-    Open TrafficTab
-    Check 'zpět na Dopravu: data zůstala' "$(Named 'Depo Hostivař') $(Shown WasteMeta)" 'True False'
+    Check 'stavové texty jsou schované' (States $sections) 'False False False False False False False False False False'
+    Check 'čas aktualizace' ((Text UpdatedText) -match '^aktualizováno \d{1,2}:\d\d$') $true
+
+    Toggle AirToggle
+    Check 'sbalená karta: zbylo jen záhlaví' "$(Shown AirToggle) $(Shown AirMeta) $(Named 'Přijatelná')" 'True False False'
+    Check 'sousední karta zůstala' (Named '14,2 °C') $true
+    Check 'sbalení je na disku' (Collapsed) 'Air'
+    Toggle AirToggle
+    Check 'čerstvá data jsou po rozbalení hned zpátky' "$(Named 'Přijatelná') $(Text AirMeta)" 'True Praha 2-Legerova · 620 m'
+    Toggle AirToggle
+    Toggle NearbyToggle
 
     Check 'nastavení je na disku' (Test-Path $settings) $true
     $saved = [IO.File]::ReadAllText($settings, [Text.Encoding]::UTF8)
@@ -198,20 +206,22 @@ try {
     Check 'užší okruh: jen bližší zastávky' (WaitFor { (Text TransitMeta) -eq 'Náměstí Míru' }) $true
     Check 'čtyři odjezdy: čtvrtý je vidět' (WaitFor { Named 'Chodov' }) $true
     Check 'čtyři odjezdy: pátý už ne' (Named 'Sídliště Řepy') $false
-    Check 'vypnutá karta zmizela, ostatní na záložce zůstaly' "$(Shown ParkingMeta) $(Shown CarsMeta) $(Shown VehiclesMeta)" 'False True True'
-    Open AroundTab
-    Check 'druhá záložka: vypnutá karta zmizela, ostatní zůstaly' "$(Shown WasteMeta) $(Shown AirMeta) $(Shown NearbyMeta)" 'False True True'
-    Check 'ostatní karty se načtou' (WaitFor { Named 'Přijatelná' }) $true
+    Check 'vypnuté karty zmizely, ostatní zůstaly' "$(Shown ParkingToggle) $(Shown WasteToggle) $(Shown CarsMeta) $(Shown VehiclesMeta) $(Shown MicroclimateMeta)" 'False False True True True'
+    Check 'ostatní karty se načtou' (WaitFor { Named '14,2 °C' }) $true
+    Check 'sbalené karty zůstaly sbalené i po uložení' "$(Toggled AirToggle) $(Toggled NearbyToggle) $(Shown AirMeta) $(Named 'Lékárna U Ludmily')" 'Off Off False False'
     $options = ([IO.File]::ReadAllText($settings, [Text.Encoding]::UTF8) | ConvertFrom-Json).options
-    Check 'volby na disku, čísla srovnaná do mezí' "$($options.stopsRange)|$($options.wasteRange)|$($options.parkingRange)|$($options.departures)|$($options.refresh)|$($options.hidden -join ',')" '300|400|5000|4|15|Parking,Waste'
+    Check 'volby na disku, čísla srovnaná do mezí' "$($options.stopsRange)|$($options.wasteRange)|$($options.parkingRange)|$($options.departures)|$($options.refresh)|$($options.hidden -join ',')|$($options.collapsed -join ',')" '300|400|5000|4|15|Waste,Parking|Air,Nearby'
     Check 'zavření okna ukončí proces' (Close $p) $true
 
     '--- druhé spuštění: nastavení se načte z disku'
     $p = Launch -Demo
     Check 'rovnou přehled s uloženým místem' (WaitFor { (Text PlaceText) -eq 'Náměstí Míru, Vinohrady' }) $true
     Check 'data se načtou' (WaitFor { Named 'Depo Hostivař' }) $true
-    Check 'otevře se první záložka' "$(Shown TrafficTab) $(Shown AroundTab) $(Shown TransitMeta) $(Shown AirMeta)" 'True True True False'
-    Check 'vypnutá karta zůstala vypnutá' "$(Shown ParkingMeta) $(Shown CarsMeta)" 'False True'
+    Check 'všechno je na jedné stránce' (WaitFor { (Named '14,2 °C') -and (NamedLike '^Škoda Fabia\s+CAR4WAY') }) $true
+    Check 'vypnutá karta zůstala vypnutá' "$(Shown ParkingToggle) $(Shown CarsMeta)" 'False True'
+    Check 'sbalené karty zůstaly sbalené a nenačetly se' "$(Toggled AirToggle) $(Toggled NearbyToggle) $(Toggled TransitToggle)|$(Text AirMeta)|$(Text NearbyMeta)|" 'Off Off On|||'
+    Toggle AirToggle
+    Check 'po rozbalení se karta načte' (WaitFor { (Named 'Přijatelná') -and (Text AirMeta) -eq 'Praha 2-Legerova · 620 m' }) $true
     Check 'užší okruh platí dál' (Text TransitMeta) 'Náměstí Míru'
     Invoke SettingsButton
     Check 'formulář je předvyplněný' "$(Value AddressBox)|$(Value LatitudeBox)|$(Value LongitudeBox)" 'Náměstí Míru, Vinohrady|50.0753|14.4379'
@@ -224,12 +234,14 @@ try {
     Check 'zpět na přehled' (Text PlaceText) 'Náměstí Míru, Vinohrady'
     Check 'po návratu data nezmizela' (Named 'Depo Hostivař') $true
 
-    '--- záložka, na které nezbyla žádná karta, zmizí'
+    '--- sloupec, ve kterém nezbyla žádná karta, se zavře'
+    $before = Left AlertsToggle
     Invoke SettingsButton
-    $pages.Traffic | Where-Object { $_ -ne 'Parking' } | ForEach-Object { Toggle "${_}Chip" }
+    'Transit', 'Vehicles' | ForEach-Object { Toggle "${_}Chip" }
     Invoke SaveButton
-    Check 'zbyla jen záložka Okolí' (WaitFor { Named 'Přijatelná' }) $true
-    Check 'přepínač záložek je schovaný' "$(Shown TrafficTab) $(Shown AroundTab) $(Shown TransitMeta) $(Shown AirMeta)" 'False False False True'
+    Check 'zbylé karty jedou dál' (WaitFor { Named '14,2 °C' }) $true
+    Check 'karty prvního sloupce zmizely' "$(Shown TransitToggle) $(Shown VehiclesToggle) $(Shown AlertsToggle)" 'False False True'
+    Check 'druhý sloupec se posunul na kraj' "$($before -gt 300) $((Left AlertsToggle) -lt 150)" 'True True'
     $null = Close $p
 
     '--- nastavení ze starší verze (bez voleb) se načte s výchozími hodnotami'
@@ -242,6 +254,8 @@ try {
     Check 'výchozí okruh zastávek' (Text TransitMeta) 'Náměstí Míru, Šumavská'
     Invoke SettingsButton
     Check 'výchozí volby ve formuláři' "$(Value StopsRangeBox)|$(Value DeparturesBox)|$(Value RefreshBox)|$(Toggled ParkingChip)" '600|12|30|On'
+    Invoke BackButton
+    Check 'všechny karty jsou rozbalené' (($sections | ForEach-Object { Toggled "${_}Toggle" }) -join ' ') 'On On On On On On On On On On'
     $null = Close $p
 
     '--- chyba v jedné sekci nezboří ostatní'

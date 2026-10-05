@@ -3,6 +3,26 @@
 Všechny podstatné změny v projektu. Formát vychází z [Keep a Changelog](https://keepachangelog.com/cs/1.1.0/),
 verze se řídí [sémantickým verzováním](https://semver.org/lang/cs/).
 
+## [0.3.0] - 2026-10-05
+
+### Přidáno
+
+- Každá karta jde sbalit kliknutím na záhlaví (nebo mezerníkem); zůstane z ní jen řádek s názvem. Sbalená
+  karta se nestahuje a po rozbalení se načte. Co je sbalené, si aplikace pamatuje.
+
+### Změněno
+
+- Všechny karty jsou na jedné stránce ve třech sloupcích, záložky Doprava a Okolí zmizely.
+- Protože se teď načítá všechno naráz a do limitu API se to nevejde, mají přednost karty nahoře (odjezdy,
+  vozidla, odpad, výluky, ovzduší, mikroklima). Parkování, místa v okolí, sdílená auta a cyklosčítač se
+  načtou hned po nich.
+- Svoz odpadu: žlutý kontejner se jmenuje „Plasty a nápojové kartony“ a má žlutou tečku. Golemio mu říká
+  „Multikomoditní sběr“, což znělo jako směsný odpad, a tečka byla tyrkysová.
+
+### Odebráno
+
+- Přepínač `-Page`; není mezi čím přepínat.
+
 ## [0.2.1] - 2026-10-05
 
 ### Změněno
@@ -105,6 +125,7 @@ První vydání. Číslo začíná nulou, protože aplikace ještě neběžela s
 - Aplikace zatím neběžela proti skutečným datům z Golemia, jen proti ukázkovým odpovědím sestaveným podle
   specifikace API.
 
+[0.3.0]: https://github.com/JohnyLeeJohnes/GolemWatch/releases/tag/v0.3.0
 [0.2.1]: https://github.com/JohnyLeeJohnes/GolemWatch/releases/tag/v0.2.1
 [0.2.0]: https://github.com/JohnyLeeJohnes/GolemWatch/releases/tag/v0.2.0
 [0.1.0]: https://github.com/JohnyLeeJohnes/GolemWatch/releases/tag/v0.1.0
