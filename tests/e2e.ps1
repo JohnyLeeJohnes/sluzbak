@@ -52,6 +52,8 @@ function Text($id) { $e = Find $id; if ($e) { $e.Current.Name } else { '<nenalez
 function Value($id) { (Find $id).GetCurrentPattern([Windows.Automation.ValuePattern]::Pattern).Current.Value }
 function SetValue($id, $v) { (Find $id).GetCurrentPattern([Windows.Automation.ValuePattern]::Pattern).SetValue($v); Start-Sleep -Milliseconds 250 }
 function Invoke($id) { (Find $id).GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern).Invoke(); Start-Sleep -Milliseconds 400 }
+function Toggle($id) { (Find $id).GetCurrentPattern([Windows.Automation.TogglePattern]::Pattern).Toggle(); Start-Sleep -Milliseconds 250 }
+function Toggled($id) { (Find $id).GetCurrentPattern([Windows.Automation.TogglePattern]::Pattern).Current.ToggleState }
 function Pick($name) { (FindNamed $name).GetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern).Select(); Start-Sleep -Milliseconds 250 }
 function WaitFor([scriptblock]$condition, [int]$seconds = 15) {
     $until = [DateTime]::UtcNow.AddSeconds($seconds)
@@ -76,6 +78,10 @@ try {
     Check 'přehled je schovaný' (Shown RefreshButton) $false
     Check 'nabízí ukázková data' (Shown DemoButton) $true
     Check 'není se kam vracet' (Shown BackButton) $false
+    Check 'volby jsou předvyplněné' "$(Value StopsRangeBox)|$(Value WasteRangeBox)|$(Value ParkingRangeBox)|$(Value DeparturesBox)|$(Value RefreshBox)" '600|400|1500|12|30'
+    Check 'všechny karty jsou zapnuté' "$(Toggled TransitChip) $(Toggled NearbyChip) $(Toggled WasteChip) $(Toggled AirChip) $(Toggled MicroclimateChip) $(Toggled ParkingChip)" 'On On On On On On'
+    SetValue StopsRangeBox '4x5 0m'
+    Check 'do pole s číslem jdou jen číslice' (Value StopsRangeBox) '450'
     Invoke SaveButton
     Check 'bez klíče to nejde' (Text SetupStatus) 'Vlož klíč ke Golemio API.'
     SetValue TokenBox 'testovaci-klic'
@@ -146,17 +152,57 @@ try {
     Invoke RefreshButton
     Check 'obnovení doběhne' (WaitFor { (Find RefreshButton).Current.IsEnabled }) $true
     Check 'po obnovení data zůstanou' (Named 'Depo Hostivař') $true
+    $options = ([IO.File]::ReadAllText($settings, [Text.Encoding]::UTF8) | ConvertFrom-Json).options
+    Check 'výchozí volby na disku' "$($options.stopsRange)|$($options.wasteRange)|$($options.parkingRange)|$($options.departures)|$($options.refresh)|$(@($options.hidden).Count)" '600|400|1500|12|30|0'
+
+    '--- změna voleb: vypnuté karty, užší okruh, méně odjezdů, čísla mimo meze'
+    Invoke SettingsButton
+    Toggle WasteChip
+    Toggle ParkingChip
+    SetValue StopsRangeBox '300'
+    SetValue DeparturesBox '4'
+    SetValue ParkingRangeBox '99999'
+    SetValue RefreshBox '1'
+    Invoke SaveButton
+    Check 'užší okruh: jen bližší zastávky' (WaitFor { (Text TransitMeta) -eq 'Náměstí Míru' }) $true
+    Check 'čtyři odjezdy: čtvrtý je vidět' (WaitFor { Named 'Chodov' }) $true
+    Check 'čtyři odjezdy: pátý už ne' (Named 'Sídliště Řepy') $false
+    Check 'vypnuté karty zmizely, ostatní zůstaly' "$(Shown WasteMeta) $(Shown ParkingMeta) $(Shown AirMeta) $(Shown NearbyMeta)" 'False False True True'
+    Check 'ostatní karty se načtou' (WaitFor { Named 'Přijatelná' }) $true
+    $options = ([IO.File]::ReadAllText($settings, [Text.Encoding]::UTF8) | ConvertFrom-Json).options
+    Check 'volby na disku, čísla srovnaná do mezí' "$($options.stopsRange)|$($options.wasteRange)|$($options.parkingRange)|$($options.departures)|$($options.refresh)|$($options.hidden -join ',')" '300|400|5000|4|15|Waste,Parking'
     Check 'zavření okna ukončí proces' (Close $p) $true
 
     '--- druhé spuštění: nastavení se načte z disku'
     $p = Launch -Demo
     Check 'rovnou přehled s uloženým místem' (WaitFor { (Text PlaceText) -eq 'náměstí Míru' }) $true
     Check 'data se načtou' (WaitFor { Named 'Depo Hostivař' }) $true
+    Check 'vypnutá karta zůstala vypnutá' "$(Shown ParkingMeta) $(Shown AirMeta)" 'False True'
+    Check 'užší okruh platí dál' (Text TransitMeta) 'Náměstí Míru'
     Invoke SettingsButton
     Check 'formulář je předvyplněný' "$(Value AddressBox)|$(Value LatitudeBox)|$(Value LongitudeBox)" 'náměstí Míru|50.0753|14.4379'
+    Check 'volby jsou předvyplněné' "$(Value StopsRangeBox)|$(Value ParkingRangeBox)|$(Value DeparturesBox)|$(Value RefreshBox)|$(Toggled WasteChip)|$(Toggled ParkingChip)|$(Toggled AirChip)" '300|5000|4|15|Off|Off|On'
+    Toggle TransitChip
+    Toggle NearbyChip
+    Toggle AirChip
+    Toggle MicroclimateChip
+    Invoke SaveButton
+    Check 'aspoň jedna karta musí zůstat' (Text SetupStatus) 'Nech zapnutou aspoň jednu kartu.'
     Invoke BackButton
     Check 'zpět na přehled' (Text PlaceText) 'náměstí Míru'
     Check 'po návratu data nezmizela' (Named 'Depo Hostivař') $true
+    $null = Close $p
+
+    '--- nastavení ze starší verze (bez voleb) se načte s výchozími hodnotami'
+    $token = ConvertTo-SecureString 'testovaci-klic' -AsPlainText -Force | ConvertFrom-SecureString
+    $old = [ordered]@{ token = $token; place = 'Staré nastavení'; latitude = 50.0753; longitude = 14.4379 } | ConvertTo-Json
+    [IO.File]::WriteAllText($settings, $old, (New-Object Text.UTF8Encoding $false))
+    $p = Launch -Demo
+    Check 'starý soubor se načte' (WaitFor { (Text PlaceText) -eq 'Staré nastavení' }) $true
+    Check 'všechny karty jsou vidět' (WaitFor { Named 'volných z 180' }) $true
+    Check 'výchozí okruh zastávek' (Text TransitMeta) 'Náměstí Míru, Šumavská'
+    Invoke SettingsButton
+    Check 'výchozí volby ve formuláři' "$(Value StopsRangeBox)|$(Value DeparturesBox)|$(Value RefreshBox)|$(Toggled ParkingChip)" '600|12|30|On'
     $null = Close $p
 
     '--- chyba v jedné sekci nezboří ostatní'

@@ -17,7 +17,9 @@ verze se řídí [sémantickým verzováním](https://semver.org/lang/cs/).
   - nejbližší parkoviště a jejich volná místa.
 - Nastavení při prvním spuštění: vlastní klíč k API a místo zadané adresou (hledá Nominatim) nebo souřadnicemi.
   Klíč se před uložením ověří.
-- Nastavení se ukládá do `%APPDATA%\GolemWatch\settings.json`, klíč zašifrovaný přes Windows DPAPI. Stažená
+- Volby v nastavení: které karty přehled ukazuje, okruh hledání zastávek, tříděného odpadu a parkovišť, počet
+  odjezdů a interval jejich obnovování. Všechno má výchozí hodnotu a jde kdykoli změnit.
+- Nastavení i volby se ukládají do `%APPDATA%\GolemWatch\settings.json`, klíč zašifrovaný přes Windows DPAPI. Stažená
   data se neukládají nikam.
 - Odjezdy se obnovují každých 30 sekund, ostatní karty každých 10 minut; ručně tlačítkem Obnovit nebo F5.
 - Chyba jedné karty nezastaví ostatní a ukáže se přímo v ní.

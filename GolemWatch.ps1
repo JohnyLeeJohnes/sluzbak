@@ -57,13 +57,25 @@ if ($Screenshot) { $Screenshot = Resolve-Target $Screenshot }
 $demoPlace = @{ Name = 'Náměstí Míru, Praha 2'; Latitude = 50.0753; Longitude = 14.4379 }
 $unnamed = 'Vlastní místo'
 
-# Ke každé sekci patří funkce Get-<sekce> v Golemio.ps1 a prvky <sekce>Meta, <sekce>State a <sekce>Body v okně.
+# Ke každé sekci patří funkce Get-<sekce> v Golemio.ps1, v přehledu prvky <sekce>Card, <sekce>Meta,
+# <sekce>State a <sekce>Body a v nastavení štítek <sekce>Chip.
 $sections = 'Transit', 'Nearby', 'Waste', 'Air', 'Microclimate', 'Parking'
-$transitEvery = [TimeSpan]::FromSeconds(30)
 $allEvery = [TimeSpan]::FromMinutes(10)
 
+# Číselné volby: nejmenší a největší povolená hodnota. Výchozí hodnoty jsou v $defaultOptions (Golemio.ps1),
+# v nastavení má každá pole <volba>Box.
+$limits = [ordered]@{
+    StopsRange = 100, 2000
+    WasteRange = 100, 2000
+    ParkingRange = 200, 5000
+    Departures = 3, 30
+    Refresh = 15, 600
+}
+
 $state = @{
-    Saved = $null          # uložené nastavení: @{ Token; Name; Latitude; Longitude }
+    # Uložené nastavení: @{ Token; Name; Latitude; Longitude; Options }, kde Options jsou číselné volby
+    # a Hidden = sekce, které uživatel v přehledu nechce.
+    Saved = $null
     Trial = $false         # přehled s ukázkovými daty, nic se neukládá
     Generation = 0         # zvýší se při změně místa; výsledky starších úloh se zahodí
     Stops = $null          # zastávky v okolí; hledají se jen jednou, je to nejdražší dotaz
@@ -77,11 +89,32 @@ $state = @{
 
 function Test-Demo { $Demo -or $state.Trial }
 function Get-Place { if ($state.Trial) { $demoPlace } else { $state.Saved } }
+
+function Get-DefaultOptions {
+    $options = @{ Hidden = @() }
+    foreach ($name in $limits.Keys) { $options[$name] = $defaultOptions[$name] }
+    $options
+}
+# Ukázka z tlačítka běží vždy s výchozími volbami, ať vypadá pro každého stejně.
+function Get-Options { if ($state.Trial -or -not $state.Saved) { Get-DefaultOptions } else { $state.Saved.Options } }
+function Get-Sections {
+    $hidden = @((Get-Options).Hidden)
+    $sections | Where-Object { $_ -notin $hidden }
+}
+function Get-TransitEvery { [TimeSpan]::FromSeconds((Get-Options).Refresh) }
+
+# Co není číslo, se změní na výchozí hodnotu; číslo mimo meze na nejbližší povolené.
+function ConvertTo-Option([string]$name, $value) {
+    $number = 0
+    if (-not [int]::TryParse("$value", [ref]$number)) { return $defaultOptions[$name] }
+    [Math]::Max($limits[$name][0], [Math]::Min($limits[$name][1], $number))
+}
+
 # Všechny úlohy sdílejí jednu frontu časů odeslaných dotazů, podle které Golemio.ps1 hlídá limit API.
 $limiter = New-Object System.Collections.Queue
 function Get-Context {
-    if (Test-Demo) { @{ Token = ''; Demo = $demoDirectory } }
-    else { @{ Token = $state.Saved.Token; Demo = $null; Limiter = $limiter } }
+    if (Test-Demo) { @{ Token = ''; Demo = $demoDirectory; Options = Get-Options } }
+    else { @{ Token = $state.Saved.Token; Demo = $null; Limiter = $limiter; Options = Get-Options } }
 }
 
 # ---- Nastavení na disku ----
@@ -92,11 +125,15 @@ function Read-Settings {
         $saved = [IO.File]::ReadAllText($SettingsPath, [Text.Encoding]::UTF8) | ConvertFrom-Json
         $token = [Net.NetworkCredential]::new('', (ConvertTo-SecureString $saved.token)).Password
         if ($token -and $null -ne $saved.latitude -and $null -ne $saved.longitude) {
+            # Volby mohou chybět (soubor ze starší verze) nebo být přepsané ručně; ConvertTo-Option si poradí s obojím.
+            $options = @{ Hidden = @(@($saved.options.hidden) | Where-Object { $_ -in $sections }) }
+            foreach ($name in $limits.Keys) { $options[$name] = ConvertTo-Option $name $saved.options.$name }
             return @{
                 Token = $token
                 Name = if ($saved.place) { [string]$saved.place } else { $unnamed }
                 Latitude = [double]$saved.latitude
                 Longitude = [double]$saved.longitude
+                Options = $options
             }
         }
     } catch { }   # Chybějící, poškozený nebo cizí soubor = první spuštění.
@@ -104,12 +141,17 @@ function Read-Settings {
 
 function Save-Settings($settings) {
     $null = New-Item -ItemType Directory -Force (Split-Path $SettingsPath)
+    # V souboru jsou jména malým písmenem jako ostatní klíče: StopsRange -> stopsRange.
+    $options = [ordered]@{}
+    foreach ($name in $limits.Keys) { $options[$name.Substring(0, 1).ToLower() + $name.Substring(1)] = $settings.Options[$name] }
+    $options.hidden = @($settings.Options.Hidden)
     $json = [ordered]@{
         token = ConvertTo-SecureString $settings.Token -AsPlainText -Force | ConvertFrom-SecureString
         place = $settings.Name
         latitude = $settings.Latitude
         longitude = $settings.Longitude
-    } | ConvertTo-Json
+        options = $options
+    } | ConvertTo-Json -Depth 4
     [IO.File]::WriteAllText($SettingsPath, $json, [Text.UTF8Encoding]::new($false))
 }
 
@@ -224,8 +266,31 @@ function Update-Sections([switch]$Manual) {
     if ($Manual) { $state.Manual = $true }
     $now = [DateTime]::UtcNow
     $state.AllDue = $now + $allEvery
-    $state.TransitDue = $now + $transitEvery
-    foreach ($name in $sections) { Start-Section $name }
+    $state.TransitDue = $now + (Get-TransitEvery)
+    foreach ($name in @(Get-Sections)) { Start-Section $name }
+}
+
+# Schová karty, které uživatel vypnul, a sloupce, ve kterých žádná nezbyla, ať po nich nezůstane díra.
+function Update-Layout {
+    $shown = @(Get-Sections)
+    foreach ($name in $sections) {
+        $ui["${name}Card"].Visibility = if ($name -in $shown) { 'Visible' } else { 'Collapsed' }
+    }
+
+    # V mřížce jsou sudé sloupce karty a liché mezery mezi nimi.
+    $columns = $ui.Cards.ColumnDefinitions
+    $weights = 1.12, 1, 1
+    $used = 0
+    foreach ($index in 0..2) {
+        $any = @($ui["Column$($index + 1)"].Children | Where-Object { $_.Visibility -eq 'Visible' }).Count -gt 0
+        $columns[$index * 2].Width = [Windows.GridLength]::new($(if ($any) { $weights[$index] } else { 0 }), 'Star')
+        if ($index -gt 0) {
+            $columns[$index * 2 - 1].Width = [Windows.GridLength]::new($(if ($any -and $used -gt 0) { 16 } else { 0 }))
+        }
+        if ($any) { $used++ }
+    }
+    # Jeden nebo dva sloupce přes celé okno by byly zbytečně široké.
+    $ui.Cards.MaxWidth = if ($used -eq 3) { [double]::PositiveInfinity } else { 580 * $used }
 }
 
 function Update-Header {
@@ -243,6 +308,7 @@ function Show-Dashboard([switch]$Reload) {
     $ui.PlaceText.Text = $place.Name
     $ui.CoordinatesText.Text = (Format-Coordinate $place.Latitude) + ', ' + (Format-Coordinate $place.Longitude)
     $ui.DemoBadge.Visibility = if (Test-Demo) { 'Visible' } else { 'Collapsed' }
+    Update-Layout
     Show-View 'DashboardView'
     if ($Reload) {
         Reset-Sections
@@ -263,6 +329,9 @@ function Show-Setup {
     $ui.AddressBox.Text = if ($saved -and $saved.Name -ne $unnamed) { $saved.Name } else { '' }
     $ui.LatitudeBox.Text = if ($saved) { Format-Coordinate $saved.Latitude } else { '' }
     $ui.LongitudeBox.Text = if ($saved) { Format-Coordinate $saved.Longitude } else { '' }
+    $options = if ($saved) { $saved.Options } else { Get-DefaultOptions }
+    foreach ($name in $limits.Keys) { $ui["${name}Box"].Text = "$($options[$name])" }
+    foreach ($name in $sections) { $ui["${name}Chip"].IsChecked = $name -notin $options.Hidden }
     $ui.ResultsList.ItemsSource = $null
     $ui.ResultsList.Visibility = 'Collapsed'
     Set-SetupStatus ''
@@ -333,12 +402,24 @@ function Save-Setup {
         return
     }
 
+    $options = @{ Hidden = @($sections | Where-Object { -not $ui["${_}Chip"].IsChecked }) }
+    if ($options.Hidden.Count -eq $sections.Count) {
+        Set-SetupStatus 'Nech zapnutou aspoň jednu kartu.' -IsError
+        return
+    }
+    foreach ($name in $limits.Keys) {
+        $options[$name] = ConvertTo-Option $name $ui["${name}Box"].Text
+        # Ať je ve formuláři vidět, co se opravdu uloží.
+        $ui["${name}Box"].Text = "$($options[$name])"
+    }
+
     $name = $ui.AddressBox.Text.Trim()
     $settings = @{
         Token = $token
         Name = if ($name) { $name } else { $unnamed }
         Latitude = $latitude
         Longitude = $longitude
+        Options = $options
     }
     # Než klíč ověříme, formulář zamrzne, aby se mezitím nedalo odejít jinam.
     $ui.SetupView.IsEnabled = $false
@@ -387,12 +468,13 @@ try {
 
     $ui = @{}
     'SetupView', 'TokenBox', 'KeyLink', 'AddressBox', 'FindButton', 'ResultsList', 'LatitudeBox', 'LongitudeBox',
-    'SaveButton', 'SetupStatus', 'BackButton', 'DemoButton',
+    'LimitsHint', 'SaveButton', 'SetupStatus', 'BackButton', 'DemoButton',
     'DashboardView', 'PlaceText', 'CoordinatesText', 'DemoBadge', 'UpdatedText', 'RefreshButton', 'SettingsButton',
-    'DashboardScroll' | ForEach-Object { $ui[$_] = $window.FindName($_) }
+    'DashboardScroll', 'Cards', 'Column1', 'Column2', 'Column3' | ForEach-Object { $ui[$_] = $window.FindName($_) }
     foreach ($name in $sections) {
-        'Meta', 'State', 'Body' | ForEach-Object { $ui["$name$_"] = $window.FindName("$name$_") }
+        'Card', 'Meta', 'State', 'Body', 'Chip' | ForEach-Object { $ui["$name$_"] = $window.FindName("$name$_") }
     }
+    foreach ($name in $limits.Keys) { $ui["${name}Box"] = $window.FindName("${name}Box") }
 
     # Na malém displeji by okno ve výchozí velikosti přečnívalo přes okraj obrazovky.
     $area = [Windows.SystemParameters]::WorkArea
@@ -435,8 +517,24 @@ try {
         $ui.LongitudeBox.Text = Format-Coordinate $picked.Longitude
     })
 
+    # Pole s čísly berou jen číslice a po opuštění se srovnají do povolených mezí.
+    $numberBoxes = @($limits.Keys | ForEach-Object { $ui["${_}Box"] })
+    foreach ($name in $limits.Keys) {
+        $ui["${name}Box"].Tag = $name
+        $ui["${name}Box"].Add_TextChanged({
+            param($box)
+            $digits = $box.Text -replace '[^0-9]'
+            if ($digits -eq $box.Text) { return }
+            $box.Text = $digits
+            $box.CaretIndex = $digits.Length
+        })
+        $ui["${name}Box"].Add_LostKeyboardFocus({ param($box) $box.Text = "$(ConvertTo-Option $box.Tag $box.Text)" })
+    }
+    $ui.LimitsHint.Text = 'Povolené hodnoty: zastávky {0} m, tříděný odpad {1} m, parkoviště {2} m, odjezdů {3}, obnovování po {4} s. Jiné číslo se upraví na nejbližší povolené.' -f
+        @($limits.Values | ForEach-Object { $_ -join '–' })
+
     $ui.SaveButton.Add_Click({ Save-Setup })
-    foreach ($box in $ui.TokenBox, $ui.LatitudeBox, $ui.LongitudeBox) {
+    foreach ($box in @($ui.TokenBox, $ui.LatitudeBox, $ui.LongitudeBox) + $numberBoxes) {
         $box.Add_KeyDown({
             param($box, $e)
             if ($e.Key -ne 'Return') { return }
@@ -470,7 +568,7 @@ try {
 
         if ($Screenshot) {
             # Nastavení je hotové hned, přehled až se dočtou všechny sekce; pak ještě chvilka na vykreslení.
-            $ready = $ui.SetupView.IsEnabled -or $state.Finished.Count -eq $sections.Count
+            $ready = $ui.SetupView.IsEnabled -or $state.Finished.Count -ge @(Get-Sections).Count
             if ($ready -and -not $state.ShotDue) {
                 # Okno se natáhne, aby byl na obrázku celý přehled, ne jen to, co se vejde bez posouvání.
                 $window.UpdateLayout()
@@ -490,8 +588,8 @@ try {
         $now = [DateTime]::UtcNow
         if ($now -ge $state.AllDue) { Update-Sections }
         elseif ($now -ge $state.TransitDue) {
-            $state.TransitDue = $now + $transitEvery
-            Start-Section 'Transit'
+            $state.TransitDue = $now + (Get-TransitEvery)
+            if ('Transit' -in @(Get-Sections)) { Start-Section 'Transit' }
         }
     })
 

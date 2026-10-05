@@ -247,6 +247,50 @@
             </Setter>
         </Style>
 
+        <!-- Popisek nad jedním polem ve skupině -->
+        <Style x:Key="FieldCaption" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
+
+        <!-- Zapínací štítek: karta v přehledu ano, nebo ne -->
+        <Style x:Key="Chip" TargetType="ToggleButton">
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Margin" Value="0,0,8,8"/>
+            <Setter Property="Padding" Value="13,0"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Bd" Background="{StaticResource Surface}" BorderBrush="{StaticResource Stroke}"
+                                BorderThickness="1" CornerRadius="16" Padding="{TemplateBinding Padding}">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock x:Name="Mark" FontFamily="Segoe MDL2 Assets" FontSize="10" Text="&#xE73E;"
+                                           Foreground="{StaticResource Accent}" VerticalAlignment="Center" Margin="0,1,7,0"
+                                           Visibility="Collapsed"/>
+                                <ContentPresenter VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource StrokeHover}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentTint}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                <Setter TargetName="Mark" Property="Visibility" Value="Visible"/>
+                                <Setter Property="Foreground" Value="{StaticResource Text}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Nalezené adresy -->
         <Style x:Key="ResultItem" TargetType="ListBoxItem">
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
@@ -342,9 +386,9 @@
     <!-- Pozadí má i kořenový prvek, aby bylo na obrázku okna (-Screenshot). -->
     <Grid Background="{StaticResource Bg}">
 
-        <!-- Nastavení: klíč a místo -->
+        <!-- Nastavení: vlevo klíč a místo, vpravo co a jak ukazovat -->
         <ScrollViewer x:Name="SetupView" VerticalScrollBarVisibility="Auto" Focusable="False">
-            <StackPanel Width="460" Margin="0,32" VerticalAlignment="Center">
+            <StackPanel Width="920" Margin="0,28" VerticalAlignment="Center">
 
                 <!-- Značka: oko, které hlídá jedno místo -->
                 <Grid Width="64" Height="64" HorizontalAlignment="Center">
@@ -354,69 +398,137 @@
                 </Grid>
                 <TextBlock Text="GolemWatch" FontSize="26" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,14,0,0"/>
                 <TextBlock Foreground="{StaticResource Muted}" FontSize="14" TextAlignment="Center" TextWrapping="Wrap" Margin="0,6,0,0"
-                           Text="Svoz odpadu, ovzduší, parkování a odjezdy MHD kolem tebe. Data z pražské platformy Golemio."/>
+                           Text="Odjezdy MHD, svoz odpadu, ovzduší a parkování kolem tebe. Data z pražské platformy Golemio."/>
 
-                <TextBlock Style="{StaticResource FieldLabel}" Text="Klíč ke Golemio API" Margin="0,28,0,8"/>
-                <PasswordBox x:Name="TokenBox" AutomationProperties.Name="Klíč ke Golemio API"/>
-                <TextBlock Style="{StaticResource Hint}">
-                    <Run Text="Klíč dostaneš zdarma po registraci na"/>
-                    <Hyperlink x:Name="KeyLink" NavigateUri="https://api.golemio.cz/api-keys">api.golemio.cz/api-keys</Hyperlink><Run Text=". Uloží se zašifrovaný jen v tomhle počítači."/>
-                </TextBlock>
-
-                <TextBlock Style="{StaticResource FieldLabel}" Text="Kde to má hlídat" Margin="0,24,0,8"/>
-                <Grid>
+                <Grid Margin="0,28,0,0">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="440"/>
                         <ColumnDefinition/>
-                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="440"/>
                     </Grid.ColumnDefinitions>
-                    <TextBox x:Name="AddressBox" AutomationProperties.Name="Adresa"/>
-                    <Button x:Name="FindButton" Grid.Column="1" Style="{StaticResource GhostButton}" Margin="8,0,0,0">
-                        <TextBlock>
-                            <Run FontFamily="Segoe MDL2 Assets" FontSize="11" Text="&#xE721;"/>
-                            <Run Text=" Najít"/>
-                        </TextBlock>
-                    </Button>
-                </Grid>
-                <ListBox x:Name="ResultsList" Visibility="Collapsed" Margin="0,8,0,0" MaxHeight="150"
-                         Background="{StaticResource Well}" BorderThickness="0" Padding="4"
-                         ItemContainerStyle="{StaticResource ResultItem}"
-                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                         AutomationProperties.Name="Nalezené adresy">
-                    <ListBox.Template>
-                        <ControlTemplate TargetType="ListBox">
-                            <Border Background="{TemplateBinding Background}" CornerRadius="10" Padding="{TemplateBinding Padding}">
-                                <ScrollViewer Focusable="False">
-                                    <ItemsPresenter/>
-                                </ScrollViewer>
-                            </Border>
-                        </ControlTemplate>
-                    </ListBox.Template>
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Name}" TextWrapping="Wrap"/>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-                <TextBlock Style="{StaticResource Hint}"
-                           Text="Hledaná adresa se pošle službě Nominatim (OpenStreetMap). Jestli nechceš, vyplň souřadnice ručně."/>
 
-                <Grid Margin="0,14,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition/>
-                        <ColumnDefinition Width="12"/>
-                        <ColumnDefinition/>
-                    </Grid.ColumnDefinitions>
+                    <!-- Vlevo to, bez čeho to nejde -->
                     <StackPanel>
-                        <TextBlock Style="{StaticResource FieldLabel}" Text="Zeměpisná šířka"/>
-                        <TextBox x:Name="LatitudeBox" AutomationProperties.Name="Zeměpisná šířka"/>
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Klíč ke Golemio API"/>
+                        <PasswordBox x:Name="TokenBox" AutomationProperties.Name="Klíč ke Golemio API"/>
+                        <TextBlock Style="{StaticResource Hint}">
+                            <Run Text="Klíč dostaneš zdarma po registraci na"/>
+                            <Hyperlink x:Name="KeyLink" NavigateUri="https://api.golemio.cz/api-keys">api.golemio.cz/api-keys</Hyperlink><Run Text=". Uloží se zašifrovaný jen v tomhle počítači."/>
+                        </TextBlock>
+
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Kde to má hlídat" Margin="0,24,0,8"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="AddressBox" AutomationProperties.Name="Adresa"/>
+                            <Button x:Name="FindButton" Grid.Column="1" Style="{StaticResource GhostButton}" Margin="8,0,0,0">
+                                <TextBlock>
+                                    <Run FontFamily="Segoe MDL2 Assets" FontSize="11" Text="&#xE721;"/>
+                                    <Run Text=" Najít"/>
+                                </TextBlock>
+                            </Button>
+                        </Grid>
+                        <ListBox x:Name="ResultsList" Visibility="Collapsed" Margin="0,8,0,0" MaxHeight="150"
+                                 Background="{StaticResource Well}" BorderThickness="0" Padding="4"
+                                 ItemContainerStyle="{StaticResource ResultItem}"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 AutomationProperties.Name="Nalezené adresy">
+                            <ListBox.Template>
+                                <ControlTemplate TargetType="ListBox">
+                                    <Border Background="{TemplateBinding Background}" CornerRadius="10" Padding="{TemplateBinding Padding}">
+                                        <ScrollViewer Focusable="False">
+                                            <ItemsPresenter/>
+                                        </ScrollViewer>
+                                    </Border>
+                                </ControlTemplate>
+                            </ListBox.Template>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" TextWrapping="Wrap"/>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <TextBlock Style="{StaticResource Hint}"
+                                   Text="Hledaná adresa se pošle službě Nominatim (OpenStreetMap). Jestli nechceš, vyplň souřadnice ručně."/>
+
+                        <Grid Margin="0,14,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource FieldCaption}" Text="Zeměpisná šířka"/>
+                                <TextBox x:Name="LatitudeBox" AutomationProperties.Name="Zeměpisná šířka"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Style="{StaticResource FieldCaption}" Text="Zeměpisná délka"/>
+                                <TextBox x:Name="LongitudeBox" AutomationProperties.Name="Zeměpisná délka"/>
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
+
+                    <!-- Vpravo volby. Všechno má výchozí hodnotu, vyplňovat se tu nic nemusí.
+                         Štítky se jmenují <sekce>Chip a pole <volba>Box; GolemWatch.ps1 je podle jmen hledá. -->
                     <StackPanel Grid.Column="2">
-                        <TextBlock Style="{StaticResource FieldLabel}" Text="Zeměpisná délka"/>
-                        <TextBox x:Name="LongitudeBox" AutomationProperties.Name="Zeměpisná délka"/>
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Co má přehled ukazovat"/>
+                        <WrapPanel>
+                            <ToggleButton x:Name="TransitChip" Style="{StaticResource Chip}" Content="Odjezdy"/>
+                            <ToggleButton x:Name="NearbyChip" Style="{StaticResource Chip}" Content="V okolí"/>
+                            <ToggleButton x:Name="WasteChip" Style="{StaticResource Chip}" Content="Svoz odpadu"/>
+                            <ToggleButton x:Name="AirChip" Style="{StaticResource Chip}" Content="Ovzduší"/>
+                            <ToggleButton x:Name="MicroclimateChip" Style="{StaticResource Chip}" Content="Mikroklima"/>
+                            <ToggleButton x:Name="ParkingChip" Style="{StaticResource Chip}" Content="Parkování"/>
+                        </WrapPanel>
+
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Jak daleko hledat (v metrech)" Margin="0,16,0,8"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource FieldCaption}" Text="Zastávky"/>
+                                <TextBox x:Name="StopsRangeBox" AutomationProperties.Name="Zastávky do (m)"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Style="{StaticResource FieldCaption}" Text="Tříděný odpad"/>
+                                <TextBox x:Name="WasteRangeBox" AutomationProperties.Name="Tříděný odpad do (m)"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Style="{StaticResource FieldCaption}" Text="Parkoviště"/>
+                                <TextBox x:Name="ParkingRangeBox" AutomationProperties.Name="Parkoviště do (m)"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Odjezdy" Margin="0,24,0,8"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource FieldCaption}" Text="Kolik jich ukázat"/>
+                                <TextBox x:Name="DeparturesBox" AutomationProperties.Name="Počet odjezdů"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Style="{StaticResource FieldCaption}" Text="Obnovovat po (s)"/>
+                                <TextBox x:Name="RefreshBox" AutomationProperties.Name="Obnovovat odjezdy po (s)"/>
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock x:Name="LimitsHint" Style="{StaticResource Hint}"/>
                     </StackPanel>
                 </Grid>
 
-                <Button x:Name="SaveButton" Style="{StaticResource PrimaryButton}" Margin="0,24,0,0" Content="Uložit a ukázat přehled"/>
+                <Button x:Name="SaveButton" Style="{StaticResource PrimaryButton}" Width="440" Margin="0,28,0,0" Content="Uložit a ukázat přehled"/>
                 <TextBlock x:Name="SetupStatus" Margin="0,10,0,0" FontSize="12" TextWrapping="Wrap" TextAlignment="Center"
                            Foreground="{StaticResource Muted}"/>
 
@@ -476,7 +588,7 @@
             </Grid>
 
             <ScrollViewer x:Name="DashboardScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" Focusable="False">
-                <Grid Margin="24,0,14,8">
+                <Grid x:Name="Cards" Margin="24,0,14,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="1.12*"/>
                         <ColumnDefinition Width="16"/>
@@ -485,9 +597,9 @@
                         <ColumnDefinition/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- MHD -->
-                    <StackPanel>
-                        <Border Style="{StaticResource Card}">
+                    <!-- Sloupce se jmenují Column1 až Column3 a karty <sekce>Card: prázdný sloupec okno zavře. -->
+                    <StackPanel x:Name="Column1">
+                        <Border x:Name="TransitCard" Style="{StaticResource Card}">
                             <StackPanel>
                                 <DockPanel>
                                     <TextBlock Style="{StaticResource CardGlyph}" Text="&#xE806;"/>
@@ -544,7 +656,7 @@
                         </Border>
 
                         <!-- V okolí: od každého druhu místa to nejbližší -->
-                        <Border Style="{StaticResource Card}">
+                        <Border x:Name="NearbyCard" Style="{StaticResource Card}">
                             <StackPanel>
                                 <DockPanel>
                                     <TextBlock Style="{StaticResource CardGlyph}" Text="&#xE81D;"/>
@@ -578,8 +690,8 @@
                     </StackPanel>
 
                     <!-- Svoz odpadu -->
-                    <StackPanel Grid.Column="2">
-                        <Border Style="{StaticResource Card}">
+                    <StackPanel x:Name="Column2" Grid.Column="2">
+                        <Border x:Name="WasteCard" Style="{StaticResource Card}">
                             <StackPanel>
                                 <DockPanel>
                                     <TextBlock Style="{StaticResource CardGlyph}" Text="&#xE74D;"/>
@@ -646,8 +758,8 @@
                     </StackPanel>
 
                     <!-- Ovzduší, mikroklima, parkování -->
-                    <StackPanel Grid.Column="4">
-                        <Border Style="{StaticResource Card}">
+                    <StackPanel x:Name="Column3" Grid.Column="4">
+                        <Border x:Name="AirCard" Style="{StaticResource Card}">
                             <StackPanel>
                                 <DockPanel>
                                     <TextBlock Style="{StaticResource CardGlyph}" Text="&#xE753;"/>
@@ -679,7 +791,7 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Style="{StaticResource Card}">
+                        <Border x:Name="MicroclimateCard" Style="{StaticResource Card}">
                             <StackPanel>
                                 <DockPanel>
                                     <TextBlock Style="{StaticResource CardGlyph}" Text="&#xE706;"/>
@@ -703,7 +815,7 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Style="{StaticResource Card}">
+                        <Border x:Name="ParkingCard" Style="{StaticResource Card}">
                             <StackPanel>
                                 <DockPanel>
                                     <TextBlock Style="{StaticResource CardGlyph}" Text="&#xE804;"/>

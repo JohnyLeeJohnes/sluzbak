@@ -18,8 +18,9 @@ stahují a zobrazují. Vzorem je sesterský projekt Spáč (`C:\Projects\Persona
   `tests/unit.ps1`. `.cmd` soubory jsou čistě ASCII.
 - Funkce se jmenují `Sloveso-Podstatné` (`Get-Waste`, `Show-State`), proměnné camelCase, parametry skriptu PascalCase.
 - Komentáře vysvětlují *proč*, ne *co*.
-- Každá funkce datové vrstvy dostává `$context = @{ Token; Demo; Limiter }`: `Demo` je složka s ukázkovými
-  odpověďmi místo sítě, `Limiter` fronta sdílená všemi úlohami pro hlídání limitu API.
+- Každá funkce datové vrstvy dostává `$context = @{ Token; Demo; Limiter; Options }`: `Demo` je složka
+  s ukázkovými odpověďmi místo sítě, `Limiter` fronta sdílená všemi úlohami pro hlídání limitu API, `Options`
+  volby uživatele.
 - `Golemio.ps1` nemá o okně tušení. Funkce `Get-<Sekce>` vracejí `[pscustomobject]` připravený k zobrazení:
   hotové texty, barvy jako `#RRGGBB`, vždy `Meta` (text do záhlaví karty) a `Empty` (hláška místo dat, jinak `''`).
 - Chyby z datové vrstvy: `throw (New-ApiError <druh> <česká hláška>)`; druh je v `Exception.Data['Kind']`
@@ -27,8 +28,12 @@ stahují a zobrazují. Vzorem je sesterský projekt Spáč (`C:\Projects\Persona
 - **Síť nikdy ve vlákně okna.** `Start-Work` pustí funkci z `Golemio.ps1` v `RunspacePool`, časovač výsledek
   vyzvedne a zavolá obsluhu. Obsluha se předává **jménem funkce**, ne blokem: `GetNewClosure()` by neviděl
   funkce skriptu.
-- Sekce přehledu drží pohromadě jméno: funkce `Get-<Sekce>`, prvky `<Sekce>Meta`, `<Sekce>State`, `<Sekce>Body`
-  v XAML a položka v `$sections`. Karta dostane data přes `DataContext`, vazby v XAML čtou vlastnosti objektu.
+- Sekce přehledu drží pohromadě jméno: funkce `Get-<Sekce>`, v XAML prvky `<Sekce>Card`, `<Sekce>Meta`,
+  `<Sekce>State`, `<Sekce>Body` a štítek `<Sekce>Chip` v nastavení, položka v `$sections`. Karta dostane data
+  přes `DataContext`, vazby v XAML čtou vlastnosti objektu.
+- Volby uživatele: výchozí hodnoty v `$defaultOptions` (`Golemio.ps1`), meze v `$limits` (`GolemWatch.ps1`),
+  pole `<Volba>Box` v nastavení. Datová vrstva je čte přes `Get-Option $context <jméno>`, nikdy napevno.
+  `ConvertTo-Option` srovná cokoli (text z pole, hodnotu ze souboru) do mezí.
 - Barvy jsou jen v paletě na začátku `GolemWatch.xaml`. Výjimka: barva titulku v `GolemWatch.ps1` (COLORREF)
   musí odpovídat `Bg`.
 
@@ -78,6 +83,11 @@ tests/, tools/
 
 - **Větev je `master`**, ne `main`. Repozitář je na GitHubu soukromý.
 - **Klíč nikdy do repozitáře.** Nastavení je v `%APPDATA%\GolemWatch\settings.json`, klíč šifrovaný DPAPI.
+  Uživatel zmínil i „temp“; zůstává AppData, protože `%TEMP%` Windows při úklidu maže.
+- Soubor s nastavením: `token`, `place`, `latitude`, `longitude`, `options` (`stopsRange`, `wasteRange`,
+  `parkingRange`, `departures`, `refresh`, `hidden` = vypnuté sekce). Soubor bez `options` (starší verze) musí
+  jít načíst dál; ukládají se vypnuté sekce, ne zapnuté, aby se nová karta po aktualizaci ukázala sama.
+- Prázdný sloupec přehledu zavírá `Update-Layout`; karta se do jiného sloupce nestěhuje.
 - **Žádné vlastní binárky.** Na vývojovém počítači (Windows 11 ARM64) je zapnutý Smart App Control a blokuje
   nepodepsané `.exe` i `.dll`, včetně těch právě sestavených (`0x800711C7`). Proto skript, ne C#.
   - `Add-Type` s C# kódem jen v `try/catch` a jen pro věci, bez kterých aplikace běží dál (tmavý titulek).
@@ -103,14 +113,15 @@ tests/, tools/
 ## Nová karta
 
 1. `Get-<Sekce>` v `Golemio.ps1` (vrací `Meta`, `Empty` a data) a ukázková odpověď v `demo/`.
-2. Karta v `GolemWatch.xaml` s prvky `<Sekce>Meta`, `<Sekce>State`, `<Sekce>Body`.
+2. Karta `<Sekce>Card` v `GolemWatch.xaml` s prvky `<Sekce>Meta`, `<Sekce>State`, `<Sekce>Body` a štítek
+   `<Sekce>Chip` v nastavení.
 3. Jméno do `$sections` v `GolemWatch.ps1`.
 4. Testy v `tests/unit.ps1` a kontrola v `tests/e2e.ps1`, řádek do tabulky v README.
 
 ## Stav a budoucnost
 
-- Hotovo: nastavení, přehled s kartami Odjezdy, V okolí, Svoz odpadu, Ovzduší, Mikroklima, Parkování,
-  ukázkový režim, hlídání limitu API.
+- Hotovo: nastavení (klíč, místo, volby), přehled s kartami Odjezdy, V okolí, Svoz odpadu, Ovzduší,
+  Mikroklima, Parkování, ukázkový režim, hlídání limitu API.
 - **Neověřeno proti živému API s platným klíčem** – při vývoji žádný nebyl. Ověřeno je jen, že neplatný klíč
   vrátí 401 a že funguje hledání přes Nominatim. První krok po získání klíče: `tests/live.ps1`.
 - Sporná místa specifikace, kde kód bere obě varianty: `AQ_hourly_index` (číslo vs. kód „1A“),

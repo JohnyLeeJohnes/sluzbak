@@ -2,10 +2,25 @@
 # Žádné okno: funkce běží na pozadí (GolemWatch.ps1) i v testech (tests/unit.ps1).
 # Funkce Get-* vracejí objekty připravené k zobrazení, texty už jsou naformátované.
 #
-# $context = @{ Token = '...'; Demo = $null }
+# $context = @{ Token = '...'; Demo = $null; Limiter = $null; Options = @{} }
 # S Demo = cesta ke složce se místo sítě čtou ukázkové soubory (viz Read-Demo).
+# Limiter je fronta pro hlídání limitu API (viz Wait-RateLimit), Options volby uživatele (viz $defaultOptions).
 
 Add-Type -AssemblyName System.Net.Http, System.Web.Extensions
+
+# Volby, které si uživatel může změnit v nastavení. Co v $context.Options chybí, platí odsud.
+$defaultOptions = @{
+    StopsRange = 600      # m, odkud se berou zastávky
+    WasteRange = 400      # m, stanoviště tříděného odpadu
+    ParkingRange = 1500   # m, parkoviště
+    Departures = 12       # kolik odjezdů ukázat
+    Refresh = 30          # s, jak často okno obnovuje odjezdy
+}
+
+function Get-Option($context, [string]$name) {
+    $options = $context.Options
+    if ($options -and $null -ne $options[$name]) { $options[$name] } else { $defaultOptions[$name] }
+}
 
 $cs = [Globalization.CultureInfo]::GetCultureInfo('cs-CZ')
 $invariant = [Globalization.CultureInfo]::InvariantCulture
@@ -227,12 +242,13 @@ $wasteColors = @{
 }
 
 function Get-Waste($context, [double]$latitude, [double]$longitude) {
+    $range = Get-Option $context 'WasteRange'
     $stations = Invoke-Api $context '/v2/sortedwastestations' ([ordered]@{
-        latlng = Format-LatLng $latitude $longitude; range = 400; limit = 3
+        latlng = Format-LatLng $latitude $longitude; range = $range; limit = 3
     })
 
     $now = Get-PragueNow
-    $nests = @(Get-Features $stations $latitude $longitude | Sort-Object { $_.Distance } | Select-Object -First 3 | ForEach-Object {
+    $nests = @(Get-Features $stations $latitude $longitude | Where-Object { $_.Distance -le $range } | Sort-Object { $_.Distance } | Select-Object -First 3 | ForEach-Object {
         $station = $_.Properties
         # Stanoviště mívá víc kontejnerů téhož druhu; pro přehled stačí jeden řádek na druh.
         $kinds = @(@($station.containers) | Where-Object { $_ } | Group-Object { [string]$_.trash_type.id } | ForEach-Object {
@@ -283,7 +299,7 @@ function Get-Waste($context, [double]$latitude, [double]$longitude) {
         Stations = $nests
         Bulky = $bulky
         BulkyNote = if ($bulkyError) { $bulkyError } elseif (-not $bulky) { 'V okolí teď žádný není v plánu.' } else { '' }
-        Empty = if ($nests) { '' } else { 'Do 400 metrů žádné stanoviště tříděného odpadu není.' }
+        Empty = if ($nests) { '' } else { "Do $(Format-Distance $range) žádné stanoviště tříděného odpadu není." }
     }
 }
 
@@ -387,8 +403,9 @@ $parkingKinds = @{
 }
 
 function Get-Parking($context, [double]$latitude, [double]$longitude) {
+    $range = Get-Option $context 'ParkingRange'
     $parking = Invoke-Api $context '/v3/parking' ([ordered]@{
-        boundingBox = Get-BoundingBox $latitude $longitude 1500
+        boundingBox = Get-BoundingBox $latitude $longitude $range
         # Všechno kromě "zone": pouličních zón jsou v každém bloku desítky. "none" = parkování bez režimu.
         'parkingPolicy[]' = 'commercial', 'customer_only', 'kiss_and_ride', 'park_and_ride', 'park_sharing', 'none'
     })
@@ -400,8 +417,9 @@ function Get-Parking($context, [double]$latitude, [double]$longitude) {
         if (-not $position) { $position = Read-Position $feature.geometry.coordinates }
         if (-not $position) { continue }
         @{ Properties = $feature.properties; Distance = Get-Distance $latitude $longitude $position.Latitude $position.Longitude }
-    }) | Sort-Object { $_.Distance } | Select-Object -First 6
-    if (-not $places) { return [pscustomobject]@{ Meta = ''; Empty = 'Do 1,5 km žádné parkoviště není.' } }
+    # API vrací čtverec kolem místa; co je v jeho rozích dál než okruh, se zahodí.
+    }) | Where-Object { $_.Distance -le $range } | Sort-Object { $_.Distance } | Select-Object -First 6
+    if (-not $places) { return [pscustomobject]@{ Meta = ''; Empty = "Do $(Format-Distance $range) žádné parkoviště není." } }
 
     # Obsazenost je v samostatném endpointu a má ji jen část parkovišť.
     $occupancy = @{}
@@ -415,7 +433,7 @@ function Get-Parking($context, [double]$latitude, [double]$longitude) {
     }
 
     [pscustomobject]@{
-        Meta = 'do 1,5 km'
+        Meta = 'do ' + (Format-Distance $range)
         Items = @($places | ForEach-Object {
             $p = $_.Properties
             $measured = $occupancy[[string]$p.id]
@@ -447,13 +465,14 @@ $metroColors = @{ A = '#00A562'; B = '#F8B322'; C = '#CF003D'; D = '#008BBE' }
 # Najde nástupiště v okolí. Endpoint neumí filtr podle polohy, takže se přečte celý seznam po stránkách.
 function Find-Stops($context, [double]$latitude, [double]$longitude) {
     $pageSize = 10000
+    $range = Get-Option $context 'StopsRange'
     $near = New-Object System.Collections.ArrayList
     for ($offset = 0; ; $offset += $pageSize) {
         $page = Invoke-Api $context '/v2/gtfs/stops' ([ordered]@{ limit = $pageSize; offset = $offset })
         foreach ($stop in (Get-Features $page $latitude $longitude)) {
             $p = $stop.Properties
             # location_type 0 je nástupiště; stanice, vstupy a další uzly odjezdy nemají.
-            if ($stop.Distance -le 600 -and $p.stop_id -and (-not $p.location_type -or [int]$p.location_type -eq 0)) {
+            if ($stop.Distance -le $range -and $p.stop_id -and (-not $p.location_type -or [int]$p.location_type -eq 0)) {
                 $null = $near.Add([pscustomobject]@{
                     Id = [string]$p.stop_id
                     Name = if ($p.stop_name) { [string]$p.stop_name } else { [string]$p.stop_id }
@@ -471,18 +490,20 @@ function Get-Transit($context, [double]$latitude, [double]$longitude, $stops) {
     if ($null -eq $stops) { $stops = @(Find-Stops $context $latitude $longitude) }
     $stops = @($stops)
     if (-not $stops) {
-        return [pscustomobject]@{ Meta = ''; Stops = $stops; Departures = @(); Infotexts = @(); Empty = 'Do 600 metrů žádná zastávka PID není.' }
+        $range = Format-Distance (Get-Option $context 'StopsRange')
+        return [pscustomobject]@{ Meta = ''; Stops = $stops; Departures = @(); Infotexts = @(); Empty = "Do $range žádná zastávka PID není." }
     }
 
+    $count = Get-Option $context 'Departures'
     $board = Invoke-Api $context '/v2/pid/departureboards' ([ordered]@{
-        'ids[]' = @($stops | ForEach-Object Id); minutesAfter = 90; limit = 12
+        'ids[]' = @($stops | ForEach-Object Id); minutesAfter = 90; limit = $count
     })
 
     $names = @{}
     foreach ($stop in $stops) { $names[$stop.Id] = $stop }
     $now = Get-PragueNow
 
-    $departures = @(@($board.departures) | Where-Object { $_ } | ForEach-Object {
+    $departures = @(@($board.departures) | Where-Object { $_ } | Select-Object -First $count | ForEach-Object {
         $scheduled = ConvertTo-PragueTime $_.departure_timestamp.scheduled
         $predicted = ConvertTo-PragueTime $_.departure_timestamp.predicted
         $time = if ($predicted) { $predicted } else { $scheduled }

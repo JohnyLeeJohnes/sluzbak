@@ -137,8 +137,25 @@ Check 'zastávka mimo seznam nástupišť' $transit.Departures[6].Stop 'Šumavsk
 Check 'infotext' $transit.Infotexts.Count 1
 Check 'zastávky se vrací pro příští obnovení' $transit.Stops.Count 5
 $nowhere = Get-Transit $demo 49.0 13.0 $null
-Check 'daleko od Prahy: hláška' $nowhere.Empty 'Do 600 metrů žádná zastávka PID není.'
+Check 'daleko od Prahy: hláška' $nowhere.Empty 'Do 600 m žádná zastávka PID není.'
 Check 'daleko od Prahy: nic' $nowhere.Departures.Count 0
+
+'--- volby uživatele'
+$tight = @{ Token = ''; Demo = $demo.Demo; Options = @{ StopsRange = 300; WasteRange = 100; ParkingRange = 600; Departures = 4 } }
+Check 'bez voleb platí výchozí' "$(Get-Option $demo 'StopsRange') $(Get-Option $demo 'Departures')" '600 12'
+Check 'volba z nastavení' (Get-Option $tight 'StopsRange') 300
+Check 'co ve volbách chybí, má výchozí hodnotu' (Get-Option $tight 'Refresh') 30
+Check 'užší okruh zastávek' ((@(Find-Stops $tight $lat $lng) | ForEach-Object Id | Sort-Object) -join ' ') 'U476Z101P U476Z102P U476Z1P U476Z2P'
+$fewer = Get-Transit $tight $lat $lng $null
+Check 'užší okruh: zastávky v záhlaví' $fewer.Meta 'Náměstí Míru'
+Check 'počet odjezdů' $fewer.Departures.Count 4
+Check 'užší okruh odpadu' ((Get-Waste $tight $lat $lng).Stations | ForEach-Object Name) 'Náměstí Míru 820/9'
+$closer = Get-Parking $tight $lat $lng
+Check 'užší okruh parkování' "$($closer.Items.Count) parkoviště $($closer.Meta)" '2 parkoviště do 600 m'
+$strict = @{ Token = ''; Demo = $demo.Demo; Options = @{ StopsRange = 30; WasteRange = 50; ParkingRange = 200 } }
+Check 'nic v okruhu: zastávky' (Get-Transit $strict $lat $lng $null).Empty 'Do 30 m žádná zastávka PID není.'
+Check 'nic v okruhu: odpad' (Get-Waste $strict $lat $lng).Empty 'Do 50 m žádné stanoviště tříděného odpadu není.'
+Check 'nic v okruhu: parkování' (Get-Parking $strict $lat $lng).Empty 'Do 200 m žádné parkoviště není.'
 
 '--- v okolí'
 $nearby = Get-Nearby $demo $lat $lng

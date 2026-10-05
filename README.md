@@ -38,8 +38,11 @@ děje v okolí, a sám se obnovuje.
 | Mikroklima | teplota, vlhkost, tlak, vítr a srážky z nejbližšího městského senzoru | `/v2/microclimate/points`, `/v2/microclimate/measurements` |
 | Parkování | šest nejbližších parkovišť do 1,5 km a volná místa, kde se měří | `/v3/parking`, `/v3/parking-measurements` |
 
-Odjezdy se obnovují každých 30 sekund, všechno ostatní každých 10 minut. Hned to jde tlačítkem **Obnovit**
-nebo klávesou F5. Minimalizované okno nic nestahuje a po návratu se obnoví hned.
+Vzdálenosti v tabulce jsou výchozí; okruh pro zastávky, tříděný odpad a parkoviště si v nastavení změníš,
+stejně jako to, které karty chceš vidět.
+
+Odjezdy se obnovují každých 30 sekund (jde změnit), všechno ostatní každých 10 minut. Hned to jde tlačítkem
+**Obnovit** nebo klávesou F5. Minimalizované okno nic nestahuje a po návratu se obnoví hned.
 
 ## Instalace
 
@@ -63,23 +66,29 @@ Potřebuješ Windows 10 nebo 11 (Windows PowerShell 5.1 je jejich součástí). 
 ## První spuštění
 
 <p align="center">
-  <img src="docs/nastaveni.png" width="620" alt="Nastavení: klíč a místo">
+  <img src="docs/nastaveni.png" width="860" alt="Nastavení: klíč, místo a volby">
 </p>
 
 1. **Klíč.** Zdarma po registraci na [api.golemio.cz/api-keys](https://api.golemio.cz/api-keys). Než se
    uloží, aplikace si ho u Golemia ověří.
 2. **Místo.** Napiš adresu a dej **Najít**, nebo vyplň souřadnice ručně (projde `50.0753` i `50,0753`).
    Text v poli s adresou se zároveň použije jako název místa v přehledu.
+3. **Volby.** Nic z toho vyplňovat nemusíš, všechno má výchozí hodnotu:
+   - které karty má přehled ukazovat (vypnutá karta se ani nestahuje),
+   - jak daleko hledat zastávky (100–2000 m), tříděný odpad (100–2000 m) a parkoviště (200–5000 m),
+   - kolik odjezdů ukázat (3–30) a jak často je obnovovat (15–600 s).
 
-Nastavení změníš kdykoli tlačítkem **Nastavení** v přehledu.
+Aplikace si všechno pamatuje a příště otevře rovnou přehled. Změníš to kdykoli tlačítkem **Nastavení**
+v přehledu.
 
 ## Dobré vědět
 
 - **Co kam odchází.** Klíč a souřadnice jdou jen na `api.golemio.cz`. Adresa, kterou hledáš, jde službě
   [Nominatim](https://nominatim.openstreetmap.org/) (OpenStreetMap), a to jen po kliknutí na **Najít**.
   Když souřadnice vyplníš ručně, nikam jinam se nic neposílá.
-- **Kde je nastavení.** V `%APPDATA%\GolemWatch\settings.json`: klíč, název místa a souřadnice. Klíč šifruje
-  Windows (DPAPI), takže ho přečte jen tvůj účet na tomhle počítači. Na jiném počítači ho zadáš znovu.
+- **Kde je nastavení.** V `%APPDATA%\GolemWatch\settings.json`: klíč, název místa, souřadnice a volby. Klíč
+  šifruje Windows (DPAPI), takže ho přečte jen tvůj účet na tomhle počítači. Na jiném počítači ho zadáš znovu.
+  Dočasná složka (`%TEMP%`) by nestačila: Windows ji při úklidu maže a aplikace by nastavení zapomněla.
 - **Limit API.** Golemio dovoluje 20 dotazů za 8 sekund na jeden klíč. První načtení přehledu jich potřebuje
   skoro tolik, obnovení odjezdů jeden. Aplikace si dotazy počítá a když by limit překročila, chvilku počká.
 - **První hledání zastávek chvíli trvá.** API neumí vrátit zastávky podle polohy, takže se jednou po spuštění
