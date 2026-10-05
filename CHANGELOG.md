@@ -3,6 +3,12 @@
 Všechny podstatné změny v projektu. Formát vychází z [Keep a Changelog](https://keepachangelog.com/cs/1.1.0/),
 verze se řídí [sémantickým verzováním](https://semver.org/lang/cs/).
 
+## [Nevydáno]
+
+### Přidáno
+
+- Licence MIT.
+
 ## [0.1.0] - 2026-10-05
 
 První vydání. Číslo začíná nulou, protože aplikace ještě neběžela se skutečným klíčem (viz Známé problémy).

@@ -155,10 +155,14 @@ powershell -ExecutionPolicy Bypass -File GolemWatch.ps1 -Demo -Screenshot docs\p
 
 Změny se zapisují do [CHANGELOG.md](CHANGELOG.md).
 
+## Licence
+
+[MIT](LICENSE)
+
 ---
 
 **In English:** GolemWatch is a small Windows desktop dashboard on top of Prague's Golemio open-data API. Enter
 your own API key and an address, and it shows nearby public-transport departures, waste collection days, air
-quality, microclimate sensors and parking. It is a PowerShell script with a WPF window: clone the repo and run
-`install.cmd` to get a shortcut, nothing to compile or install. Nothing is stored except your settings. The
+quality, microclimate sensors and parking. It is a PowerShell script with a WPF window: download the ZIP from
+the Releases page, unblock and extract it, and run `install.cmd` to get a shortcut. Nothing to compile or install. Nothing is stored except your settings. The
 interface is in Czech.

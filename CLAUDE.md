@@ -82,7 +82,8 @@ tests/, tools/
 
 ## Rozhodnutí a omezení
 
-- **Větev je `master`**, ne `main`. Repozitář je na GitHubu soukromý.
+- **Větev je `master`**, ne `main`. Repozitář je na GitHubu soukromý a má to tak zůstat (rozhodnutí uživatele
+  z 5. 10. 2026); Release proto stáhne jen ten, kdo má do repozitáře přístup. Licence je MIT.
 - **Klíč nikdy do repozitáře.** Nastavení je v `%APPDATA%\GolemWatch\settings.json`, klíč šifrovaný DPAPI.
   Uživatel zmínil i „temp“; zůstává AppData, protože `%TEMP%` Windows při úklidu maže.
 - Soubor s nastavením: `token`, `place`, `latitude`, `longitude`, `options` (`stopsRange`, `wasteRange`,
@@ -138,7 +139,7 @@ tests/, tools/
   vrátí 401 a že funguje hledání přes Nominatim. První krok po získání klíče: `tests/live.ps1`.
 - Sporná místa specifikace, kde kód bere obě varianty: `AQ_hourly_index` (číslo vs. kód „1A“),
   `/v2/microclimate/points` (objekt vs. pole), `point_named` vs. `point_name`, pozice zabalená do pole navíc.
-- Chybí: soubor s licencí. Stažení ZIPu prohlížečem a poklepání v Exploreru nikdo nezkoušel; ověřené je
+- Neověřeno: stažení ZIPu prohlížečem a poklepání v Exploreru nikdo nezkoušel; ověřené je
   rozbalení ZIPu do čisté složky a spuštění přes `GolemWatch.cmd` bez značky „z internetu“.
 - Plán: další datasety z Golemia (uživatel chce časem všechny). Zatím nepoužité: sdílená kola a auta
   (`/v2/vehiclesharing`), zahrady a hřiště, dopravní omezení (`/v2/traffic/restrictions`), polohy vozidel
