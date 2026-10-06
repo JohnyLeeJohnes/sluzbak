@@ -5,7 +5,7 @@
 # jako události WPF: skutečné stisky by skončily v okně, které máš zrovna otevřené. Síť test nevolá.
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 $root = Split-Path $PSScriptRoot
-$temp = Join-Path ([IO.Path]::GetTempPath()) "golemwatch-keys-$PID"
+$temp = Join-Path ([IO.Path]::GetTempPath()) "sluzbak-keys-$PID"
 $settings = Join-Path $temp 'settings.json'
 $script:fail = 0
 # Co se vypíše z obsluhy události, se ztratí; řádky se proto sbírají a vypíšou až po zavření okna.
@@ -178,7 +178,7 @@ $driver.Add_Tick({
 $null = New-Item -ItemType Directory -Force $temp
 try {
     $driver.Start()
-    . (Join-Path $root 'GolemWatch.ps1') -Demo -SettingsPath $settings
+    . (Join-Path $root 'Sluzbak.ps1') -Demo -SettingsPath $settings
 } finally {
     $driver.Stop()
     Remove-Item $temp -Recurse -Force

@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/golemwatch.png" width="96" alt="Ikona aplikace GolemWatch">
+  <img src="assets/sluzbak.png" width="96" alt="Ikona aplikace Službák">
 </p>
 
-<h1 align="center">GolemWatch</h1>
+<h1 align="center">Službák</h1>
 
 <p align="center">
   Praha kolem tebe v jednom okně: odjezdy a vozidla MHD, výluky, parkování, svoz odpadu a ovzduší.
@@ -12,7 +12,7 @@
   <img src="docs/prehled.png" width="860" alt="Přehled: odjezdy, vozidla v okolí, svoz odpadu, výluky, sdílená auta, cyklosčítač, ovzduší, mikroklima, parkování a místa v okolí">
 </p>
 
-Zadáš svůj klíč ke [Golemio API](https://api.golemio.cz/docs/openapi/) a adresu. GolemWatch pak ukazuje, co se
+Zadáš svůj klíč ke [Golemio API](https://api.golemio.cz/docs/openapi/) a adresu. Službák pak ukazuje, co se
 děje v okolí, a sám se obnovuje. Vyzkoušeno se skutečným klíčem i daty (říjen 2026).
 
 - **Nic se neinstaluje ani nekompiluje.** Skript v PowerShellu a okno v XAML. Všechno, co potřebuje, už ve
@@ -54,23 +54,26 @@ a dřív se pro ně na síť nejde. Minimalizované okno nestahuje nic a po náv
 
 ## Instalace
 
-1. Na stránce [Releases](https://github.com/JohnyLeeJohnes/GolemWatch/releases/latest) stáhni
-   `GolemWatch-<verze>.zip`.
+1. Na stránce [Releases](https://github.com/JohnyLeeJohnes/sluzbak/releases/latest) stáhni
+   `Sluzbak-<verze>.zip`.
 2. Klikni na stažený ZIP pravým tlačítkem, zvol **Vlastnosti**, dole zaškrtni **Odblokovat** a potvrď.
 3. Rozbal ho tam, kde má aplikace zůstat, třeba do Dokumentů.
-4. Ve složce `GolemWatch` poklepej na **`install.cmd`**. Vytvoří zástupce **GolemWatch** s ikonou v nabídce
+4. Ve složce `Sluzbak` poklepej na **`install.cmd`**. Vytvoří zástupce **Službák** s ikonou v nabídce
    Start, na ploše a přímo ve složce. Přes něj se aplikace spouští jako každá jiná, bez okna konzole.
 
 > **Proč odblokovat?** Windows si soubory stažené z internetu označí a u skriptů s tímhle označením se ptá,
 > jestli je má spustit, nebo je rovnou odmítne (Smart App Control ve Windows 11). Když ZIP odblokuješ ještě
 > před rozbalením, označení se na rozbalené soubory nepřenese.
 
-- **Jen vyzkoušet:** poklepej na `GolemWatch.cmd`, spustí aplikaci bez vytváření zástupců.
+- **Jen vyzkoušet:** poklepej na `Sluzbak.cmd`, spustí aplikaci bez vytváření zástupců.
 - **Nová verze:** stáhni ji stejně a rozbal přes tu starou. Nastavení zůstane, je uložené jinde. Kterou
   verzi máš, je napsané dole na obrazovce nastavení.
+- **Přechod z GolemWatch:** tak se aplikace jmenovala do verze 0.3.0. Rozbal Službák vedle a spusť
+  `install.cmd`: starého zástupce nahradí novým. Nastavení i s klíčem se při prvním spuštění přestěhuje
+  samo. Starou složku `GolemWatch` pak smaž.
 - **Přesunutí složky:** zástupce ukazuje tam, kde aplikace leží. Po přesunutí spusť `install.cmd` znovu.
-- **Odebrání:** smaž zástupce z plochy a z nabídky Start, celou složku a `%APPDATA%\GolemWatch`.
-- **Z gitu:** `git clone https://github.com/JohnyLeeJohnes/GolemWatch.git` a pak rovnou krok 4. Klonování
+- **Odebrání:** smaž zástupce z plochy a z nabídky Start, celou složku a `%APPDATA%\Sluzbak`.
+- **Z gitu:** `git clone https://github.com/JohnyLeeJohnes/sluzbak.git` a pak rovnou krok 4. Klonování
   označení z internetu nepřidává, takže odblokování odpadá.
 
 Potřebuješ Windows 10 nebo 11 (Windows PowerShell 5.1 je jejich součástí). Vyzkoušeno na Windows 11.
@@ -100,7 +103,7 @@ v přehledu.
 - **Co kam odchází.** Klíč a souřadnice jdou jen na `api.golemio.cz`. Adresa, kterou hledáš, jde službě
   [Nominatim](https://nominatim.openstreetmap.org/) (OpenStreetMap), a to jen po kliknutí na **Najít**.
   Když souřadnice vyplníš ručně, nikam jinam se nic neposílá.
-- **Kde je nastavení.** V `%APPDATA%\GolemWatch\settings.json`: klíč, název místa, souřadnice, volby a to,
+- **Kde je nastavení.** V `%APPDATA%\Sluzbak\settings.json`: klíč, název místa, souřadnice, volby a to,
   které karty máš sbalené. Klíč šifruje Windows (DPAPI), takže ho přečte jen tvůj účet na tomhle počítači.
   Na jiném počítači ho zadáš znovu.
   Dočasná složka (`%TEMP%`) by nestačila: Windows ji při úklidu maže a aplikace by nastavení zapomněla.
@@ -141,11 +144,11 @@ v přehledu.
 
 | Soubor | Obsah |
 | --- | --- |
-| `GolemWatch.ps1` | Chování okna: nastavení, načítání na pozadí, obnovování, vytvoření zástupců. |
-| `GolemWatch.xaml` | Vzhled okna: barvy, styly, karty. |
+| `Sluzbak.ps1` | Chování okna: nastavení, načítání na pozadí, obnovování, vytvoření zástupců. |
+| `Sluzbak.xaml` | Vzhled okna: barvy, styly, karty. |
 | `Golemio.ps1` | Čtení dat z Golemio API a hledání adres. Bez okna, dá se zkoušet samostatně. |
 | `demo/` | Ukázkové odpovědi API pro náměstí Míru. |
-| `GolemWatch.cmd`, `install.cmd` | Spuštění bez instalace a vytvoření zástupců. |
+| `Sluzbak.cmd`, `install.cmd` | Spuštění bez instalace a vytvoření zástupců. |
 | `tools/make-icon.ps1` | Vygeneruje ikonu do `assets/`. |
 | `tools/make-release.ps1` | Sestaví ZIP pro stránku Releases do `dist/`. |
 | `tests/unit.ps1` | Testy čtení dat nad ukázkovými odpověďmi. |
@@ -153,7 +156,7 @@ v přehledu.
 | `tests/keys.ps1` | Test klávesnice v nastavení (Enter, šipky, kliknutí na nalezenou adresu), pořadí načítání a sbalování karet. |
 | `tests/live.ps1` | Zkouška naživo: načte všechny karty ze skutečného API a vypíše, co která dostala. |
 
-Chceš jiné barvy? Celá paleta je na začátku `GolemWatch.xaml`. Změny se projeví při dalším spuštění, nic se
+Chceš jiné barvy? Celá paleta je na začátku `Sluzbak.xaml`. Změny se projeví při dalším spuštění, nic se
 nesestavuje.
 
 Testy se pouští takhle:
@@ -185,11 +188,11 @@ U každé karty vypíše, kolik čeho dostala, nebo chybu. Klíč nevypisuje.
 Aplikace jde pustit i s ukázkovými daty místo sítě a umí uložit obrázek svého okna:
 
 ```
-powershell -ExecutionPolicy Bypass -File GolemWatch.ps1 -Demo
+powershell -ExecutionPolicy Bypass -File Sluzbak.ps1 -Demo
 ```
 
 ```
-powershell -ExecutionPolicy Bypass -File GolemWatch.ps1 -Demo -Screenshot docs\prehled.png
+powershell -ExecutionPolicy Bypass -File Sluzbak.ps1 -Demo -Screenshot docs\prehled.png
 ```
 
 Změny se zapisují do [CHANGELOG.md](CHANGELOG.md).
@@ -200,7 +203,7 @@ Změny se zapisují do [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
-**In English:** GolemWatch is a small Windows desktop dashboard on top of Prague's Golemio open-data API. Enter
+**In English:** Službák is a small Windows desktop dashboard on top of Prague's Golemio open-data API. Enter
 your own API key and an address, and it shows nearby public-transport departures and vehicles, service
 alerts, parking, shared cars, a bicycle counter, waste collection days, nearby amenities, air quality and
 microclimate sensors. It is a PowerShell script with a WPF window: download the ZIP from

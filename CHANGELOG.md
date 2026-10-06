@@ -3,6 +3,16 @@
 Všechny podstatné změny v projektu. Formát vychází z [Keep a Changelog](https://keepachangelog.com/cs/1.1.0/),
 verze se řídí [sémantickým verzováním](https://semver.org/lang/cs/).
 
+## [Nevydáno]
+
+### Změněno
+
+- Aplikace se jmenuje **Službák** (dřív GolemWatch). Nové jméno má okno, zástupce, soubory (`Sluzbak.ps1`,
+  `Sluzbak.xaml`, `Sluzbak.cmd`), ZIP ke stažení i složka v něm.
+- Nastavení je v `%APPDATA%\Sluzbak\settings.json`. Nastavení z GolemWatch se při prvním spuštění
+  přestěhuje samo, klíč se znovu nezadává.
+- `install.cmd` vytvoří zástupce **Službák** a zástupce GolemWatch ze stejných míst odstraní.
+
 ## [0.3.0] - 2026-10-05
 
 ### Přidáno
@@ -117,7 +127,7 @@ První vydání. Číslo začíná nulou, protože aplikace ještě neběžela s
   a zkouška naživo se skutečným klíčem (`tests/live.ps1`).
 - ZIP ke stažení na stránce Releases: rozbalit, poklepat na `install.cmd` a je hotovo. Číslo verze je vidět
   dole na obrazovce nastavení.
-- GolemWatch je skript v PowerShellu s oknem ve WPF, takže se nic nekompiluje ani neinstaluje a nevadí mu
+- Aplikace je skript v PowerShellu s oknem ve WPF, takže se nic nekompiluje ani neinstaluje a nevadí mu
   Smart App Control.
 
 ### Známé problémy
@@ -125,7 +135,8 @@ První vydání. Číslo začíná nulou, protože aplikace ještě neběžela s
 - Aplikace zatím neběžela proti skutečným datům z Golemia, jen proti ukázkovým odpovědím sestaveným podle
   specifikace API.
 
-[0.3.0]: https://github.com/JohnyLeeJohnes/GolemWatch/releases/tag/v0.3.0
-[0.2.1]: https://github.com/JohnyLeeJohnes/GolemWatch/releases/tag/v0.2.1
-[0.2.0]: https://github.com/JohnyLeeJohnes/GolemWatch/releases/tag/v0.2.0
-[0.1.0]: https://github.com/JohnyLeeJohnes/GolemWatch/releases/tag/v0.1.0
+[Nevydáno]: https://github.com/JohnyLeeJohnes/sluzbak/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.3.0
+[0.2.1]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.2.1
+[0.2.0]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.2.0
+[0.1.0]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.1.0

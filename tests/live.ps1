@@ -1,10 +1,10 @@
 ﻿# Zkouška naživo: načte všechny karty ze skutečného Golemio API a vypíše, co která dostala.
 #   powershell -ExecutionPolicy Bypass -File tests/live.ps1
 #
-# Klíč a místo si bere z nastavení aplikace (%APPDATA%\GolemWatch\settings.json), takže aplikaci nejdřív
+# Klíč a místo si bere z nastavení aplikace (%APPDATA%\Sluzbak\settings.json), takže aplikaci nejdřív
 # jednou spusť a nastav. Klíč se nikam nevypisuje. Když karta selže na zpracování odpovědi, vypíše se
 # i místo v kódu, kde se to stalo; to je přesně to, co je potřeba k opravě.
-param([string]$SettingsPath = (Join-Path $env:APPDATA 'GolemWatch\settings.json'))
+param([string]$SettingsPath = (Join-Path $env:APPDATA 'Sluzbak\settings.json'))
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path (Split-Path $PSScriptRoot) 'Golemio.ps1')

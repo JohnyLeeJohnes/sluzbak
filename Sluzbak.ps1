@@ -1,16 +1,16 @@
-﻿# GolemWatch: přehled pražských dat z Golemio API kolem jednoho místa.
-# Okno je popsané v GolemWatch.xaml, data čte Golemio.ps1 na pozadí.
-#   GolemWatch.ps1                         spustí aplikaci
-#   GolemWatch.ps1 -Install                vytvoří zástupce s ikonou v nabídce Start, na ploše a ve složce s aplikací
-#   GolemWatch.ps1 -Demo                   místo sítě čte ukázková data ze složky demo (bez klíče i bez internetu)
-#   GolemWatch.ps1 -SettingsPath <soubor>  nastavení jinde než v %APPDATA% (pro testy)
-#   GolemWatch.ps1 -Screenshot <png>       po načtení uloží obrázek okna a skončí (obrázky do README)
+﻿# Službák: přehled pražských dat z Golemio API kolem jednoho místa.
+# Okno je popsané ve Sluzbak.xaml, data čte Golemio.ps1 na pozadí.
+#   Sluzbak.ps1                         spustí aplikaci
+#   Sluzbak.ps1 -Install                vytvoří zástupce s ikonou v nabídce Start, na ploše a ve složce s aplikací
+#   Sluzbak.ps1 -Demo                   místo sítě čte ukázková data ze složky demo (bez klíče i bez internetu)
+#   Sluzbak.ps1 -SettingsPath <soubor>  nastavení jinde než v %APPDATA% (pro testy)
+#   Sluzbak.ps1 -Screenshot <png>       po načtení uloží obrázek okna a skončí (obrázky do README)
 param([switch]$Install, [switch]$Demo, [string]$SettingsPath, [string]$Screenshot)
 
 $ErrorActionPreference = 'Stop'
 # Číslo vydání. Musí sedět s nejnovější verzí v CHANGELOG.md (hlídá tests/unit.ps1), bere si ho tools/make-release.ps1.
 $version = '0.3.0'
-$icon = Join-Path $PSScriptRoot 'assets\golemwatch.ico'
+$icon = Join-Path $PSScriptRoot 'assets\sluzbak.ico'
 $library = Join-Path $PSScriptRoot 'Golemio.ps1'
 $demoDirectory = Join-Path $PSScriptRoot 'demo'
 
@@ -22,22 +22,26 @@ if ($Install) {
     $shell = New-Object -ComObject WScript.Shell
     # Nabídka Start, plocha a složka s aplikací (ať je i tam na co kliknout).
     foreach ($directory in [Environment]::GetFolderPath('Programs'), [Environment]::GetFolderPath('DesktopDirectory'), $PSScriptRoot) {
-        $path = Join-Path $directory 'GolemWatch.lnk'
+        # WScript.Shell ukládá texty v kódové stránce systému a "ž" v ní být nemusí.
+        # Proto se zástupce uloží jako Sluzbak.lnk a přejmenuje až potom, a popisek je bez háčků a čárek.
+        $path = Join-Path $directory 'Sluzbak.lnk'
         $link = $shell.CreateShortcut($path)
         # conhost --headless spustí PowerShell bez okna konzole.
         $link.TargetPath = "$env:SystemRoot\System32\conhost.exe"
         $link.Arguments = "--headless powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
         $link.WorkingDirectory = $PSScriptRoot
         $link.IconLocation = $icon
-        # WScript.Shell ukládá texty v kódové stránce systému, proto je popisek bez háčků a čárek.
         $link.Description = 'Praha kolem tebe: odpad, ovzdusi, parkovani a MHD'
         $link.Save()
         if ($shell.CreateShortcut($path).Arguments -ne $link.Arguments) {
             Remove-Item $path
             throw "Cesta $PSScriptRoot obsahuje znaky, které zástupce neunese. Přesuň složku jinam a zkus to znovu."
         }
+        Move-Item $path (Join-Path $directory 'Službák.lnk') -Force
+        # Do verze 0.3.0 se aplikace jmenovala GolemWatch; její zástupce by tu zůstal vedle nového.
+        Remove-Item -LiteralPath (Join-Path $directory 'GolemWatch.lnk') -ErrorAction SilentlyContinue
     }
-    'Hotovo. Zástupce GolemWatch je v nabídce Start, na ploše a v téhle složce.'
+    'Hotovo. Zástupce Službák je v nabídce Start, na ploše a v téhle složce.'
     return
 }
 
@@ -48,7 +52,7 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 # aplikace běží dál, jen má titulek světlý.
 $native = $null
 try {
-    $native = Add-Type -Namespace GolemWatch -Name Native -PassThru -MemberDefinition @'
+    $native = Add-Type -Namespace Sluzbak -Name Native -PassThru -MemberDefinition @'
 [DllImport("dwmapi.dll")]
 public static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
 '@
@@ -56,7 +60,15 @@ public static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref i
 
 # Cesty z parametrů mohou být relativní k aktuální složce PowerShellu; .NET by je bral od složky procesu.
 function Resolve-Target([string]$path) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($path) }
-$SettingsPath = if ($SettingsPath) { Resolve-Target $SettingsPath } else { Join-Path $env:APPDATA 'GolemWatch\settings.json' }
+$SettingsPath = if ($SettingsPath) { Resolve-Target $SettingsPath } else {
+    # Do verze 0.3.0 se aplikace jmenovala GolemWatch. Nastavení z té doby se přestěhuje, ať se klíč nezadává znovu.
+    $formerDirectory = Join-Path $env:APPDATA 'GolemWatch'
+    $directory = Join-Path $env:APPDATA 'Sluzbak'
+    if ((Test-Path -LiteralPath $formerDirectory) -and -not (Test-Path -LiteralPath $directory)) {
+        try { Move-Item -LiteralPath $formerDirectory $directory } catch { }   # Nepovedlo se = první spuštění.
+    }
+    Join-Path $directory 'settings.json'
+}
 if ($Screenshot) { $Screenshot = Resolve-Target $Screenshot }
 
 # Ukázkové místo: k náměstí Míru patří soubory ve složce demo.
@@ -589,7 +601,7 @@ function Save-Screenshot([string]$path) {
 # ---- Okno ----
 
 try {
-    $window = [Windows.Markup.XamlReader]::Load([Xml.XmlReader]::Create((Join-Path $PSScriptRoot 'GolemWatch.xaml')))
+    $window = [Windows.Markup.XamlReader]::Load([Xml.XmlReader]::Create((Join-Path $PSScriptRoot 'Sluzbak.xaml')))
     if (Test-Path -LiteralPath $icon) { $window.Icon = [Windows.Media.Imaging.BitmapFrame]::Create([Uri]$icon) }
 
     $ui = @{}
@@ -602,7 +614,7 @@ try {
     }
     foreach ($name in $limits.Keys) { $ui["${name}Box"] = $window.FindName("${name}Box") }
     $missing = @($ui.Keys | Where-Object { $null -eq $ui[$_] } | Sort-Object)
-    if ($missing) { throw "V GolemWatch.xaml chybí prvky: $($missing -join ', ')" }
+    if ($missing) { throw "Ve Sluzbak.xaml chybí prvky: $($missing -join ', ')" }
     # Šířky sloupců přehledu jsou napsané v XAML; odsud se berou, když se sloupec schová a zase ukáže.
     $definitions = $ui.DashboardGrid.ColumnDefinitions
     $columnWeights = @(0, 2, 4 | ForEach-Object { $definitions[$_].Width.Value })
@@ -739,7 +751,7 @@ try {
         }
     })
 
-    $ui.VersionText.Text = "GolemWatch $version"
+    $ui.VersionText.Text = "Službák $version"
 
     $state.Saved = Read-Settings
     if ($state.Saved) {
@@ -760,5 +772,5 @@ try {
 }
 catch {
     # Konzole je schovaná, takže chybu jinak nikdo neuvidí.
-    $null = [Windows.MessageBox]::Show("$_", 'GolemWatch', 'OK', 'Error')
+    $null = [Windows.MessageBox]::Show("$_", 'Službák', 'OK', 'Error')
 }

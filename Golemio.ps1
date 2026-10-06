@@ -1,5 +1,5 @@
 ﻿# Golemio.ps1: čtení dat z Golemio API a hledání adres přes Nominatim.
-# Žádné okno: funkce běží na pozadí (GolemWatch.ps1) i v testech (tests/unit.ps1).
+# Žádné okno: funkce běží na pozadí (Sluzbak.ps1) i v testech (tests/unit.ps1).
 # Funkce Get-* vracejí objekty připravené k zobrazení, texty už jsou naformátované.
 #
 # $context = @{ Token = '...'; Demo = $null; Limiter = $null; Cache = $null; Options = @{} }
@@ -71,27 +71,27 @@ function Format-LatLng([double]$latitude, [double]$longitude) {
 
 # ConvertFrom-Json ve Windows PowerShellu neunese odpovědi nad 2 MB (seznam zastávek je větší).
 function ConvertFrom-ApiJson([string]$text) {
-    if (-not $global:GolemWatchJson) {
-        $global:GolemWatchJson = New-Object System.Web.Script.Serialization.JavaScriptSerializer
-        $global:GolemWatchJson.MaxJsonLength = [int]::MaxValue
+    if (-not $global:SluzbakJson) {
+        $global:SluzbakJson = New-Object System.Web.Script.Serialization.JavaScriptSerializer
+        $global:SluzbakJson.MaxJsonLength = [int]::MaxValue
     }
-    $global:GolemWatchJson.DeserializeObject($text)
+    $global:SluzbakJson.DeserializeObject($text)
 }
 
 # Klient žije v globální proměnné, aby ho úlohy na pozadí sdílely a spojení se neotvíralo pokaždé znovu.
 function Get-HttpClient {
-    if (-not $global:GolemWatchHttp) {
+    if (-not $global:SluzbakHttp) {
         [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
         # Výchozí dvě spojení na server nestačí: karty se čtou naráz a za stahováním zastávek by ostatní čekaly.
         [Net.ServicePointManager]::DefaultConnectionLimit = [Math]::Max([Net.ServicePointManager]::DefaultConnectionLimit, 6)
         $handler = New-Object System.Net.Http.HttpClientHandler
         $handler.AutomaticDecompression = 'GZip, Deflate'
-        $global:GolemWatchHttp = New-Object System.Net.Http.HttpClient $handler
-        $global:GolemWatchHttp.Timeout = [TimeSpan]::FromSeconds(30)
+        $global:SluzbakHttp = New-Object System.Net.Http.HttpClient $handler
+        $global:SluzbakHttp.Timeout = [TimeSpan]::FromSeconds(30)
         # Nominatim vyžaduje, aby se aplikace představila.
-        $null = $global:GolemWatchHttp.DefaultRequestHeaders.TryAddWithoutValidation('User-Agent', 'GolemWatch (+https://github.com/JohnyLeeJohnes/GolemWatch)')
+        $null = $global:SluzbakHttp.DefaultRequestHeaders.TryAddWithoutValidation('User-Agent', 'Sluzbak (+https://github.com/JohnyLeeJohnes/sluzbak)')
     }
-    $global:GolemWatchHttp
+    $global:SluzbakHttp
 }
 
 function Invoke-Http([string]$uri, [string]$token, [string]$service) {

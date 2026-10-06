@@ -1,4 +1,4 @@
-﻿# End-to-end test GolemWatch přes UI Automation:
+﻿# End-to-end test aplikace přes UI Automation:
 #   powershell -ExecutionPolicy Bypass -File tests/e2e.ps1
 #
 # Aplikace běží s ukázkovými daty a s nastavením v dočasné složce: test nevolá síť a na tvoje
@@ -6,11 +6,11 @@
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
 $AE = [Windows.Automation.AutomationElement]
 $root = Split-Path $PSScriptRoot
-$temp = Join-Path ([IO.Path]::GetTempPath()) "golemwatch-e2e-$PID"
+$temp = Join-Path ([IO.Path]::GetTempPath()) "sluzbak-e2e-$PID"
 $settings = Join-Path $temp 'settings.json'
 $script:fail = 0
 
-function Launch([string]$app = (Join-Path $root 'GolemWatch.ps1'), [switch]$Demo) {
+function Launch([string]$app = (Join-Path $root 'Sluzbak.ps1'), [switch]$Demo) {
     $arguments = '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$app`"", '-SettingsPath', "`"$settings`""
     if ($Demo) { $arguments += '-Demo' }
     $p = Start-Process powershell.exe -WindowStyle Hidden -PassThru -ArgumentList $arguments
@@ -20,7 +20,7 @@ function Launch([string]$app = (Join-Path $root 'GolemWatch.ps1'), [switch]$Demo
         Start-Sleep -Milliseconds 50
         $script:window = $AE::RootElement.FindFirst([Windows.Automation.TreeScope]::Children, $ofProcess)
     }
-    if (-not $script:window) { Stop-Process -Id $p.Id -ErrorAction SilentlyContinue; throw 'Okno GolemWatch se neobjevilo.' }
+    if (-not $script:window) { Stop-Process -Id $p.Id -ErrorAction SilentlyContinue; throw 'Okno aplikace se neobjevilo.' }
     Start-Sleep -Milliseconds 500
     $p
 }
@@ -72,7 +72,7 @@ function Check($what, $actual, $expected) {
     else { $script:fail++; "FAIL  $what = '$actual' (čekáno '$expected')" }
 }
 
-# Sekce přehledu ve stejném pořadí jako v GolemWatch.ps1.
+# Sekce přehledu ve stejném pořadí jako ve Sluzbak.ps1.
 $sections = 'Transit', 'Vehicles', 'Waste', 'Alerts', 'Cars', 'Cycling', 'Air', 'Microclimate', 'Parking', 'Nearby'
 $needPlace = 'Najdi adresu, nebo vyplň souřadnice (třeba 50,0753 a 14,4379).'
 $null = New-Item -ItemType Directory -Force $temp
@@ -84,7 +84,7 @@ try {
     Check 'přehled je schovaný' (Shown RefreshButton) $false
     Check 'nabízí ukázková data' (Shown DemoButton) $true
     Check 'není se kam vracet' (Shown BackButton) $false
-    Check 'je vidět číslo verze' ((Text VersionText) -match '^GolemWatch \d+\.\d+\.\d+$') $true
+    Check 'je vidět číslo verze' ((Text VersionText) -match '^Službák \d+\.\d+\.\d+$') $true
     Check 'volby jsou předvyplněné' "$(Value StopsRangeBox)|$(Value WasteRangeBox)|$(Value ParkingRangeBox)|$(Value DeparturesBox)|$(Value RefreshBox)" '600|400|1500|12|30'
     Check 'všechny karty jsou zapnuté' (($sections | ForEach-Object { Toggled "${_}Chip" }) -join ' ') 'On On On On On On On On On On'
     SetValue StopsRangeBox '4x5 0m'
@@ -261,10 +261,10 @@ try {
     '--- chyba v jedné sekci nezboří ostatní'
     $copy = Join-Path $temp 'app'
     $null = New-Item -ItemType Directory -Force $copy
-    Copy-Item (Join-Path $root 'GolemWatch.ps1'), (Join-Path $root 'GolemWatch.xaml'), (Join-Path $root 'Golemio.ps1') $copy
+    Copy-Item (Join-Path $root 'Sluzbak.ps1'), (Join-Path $root 'Sluzbak.xaml'), (Join-Path $root 'Golemio.ps1') $copy
     Copy-Item (Join-Path $root 'demo') $copy -Recurse
     Remove-Item (Join-Path $copy 'demo\v3-parking.json')
-    $p = Launch (Join-Path $copy 'GolemWatch.ps1') -Demo
+    $p = Launch (Join-Path $copy 'Sluzbak.ps1') -Demo
     Check 'ostatní sekce jedou' (WaitFor { Named 'Depo Hostivař' }) $true
     Check 'chyba je vidět v kartě' (WaitFor { (Text ParkingState) -eq 'Ukázková data pro /v3/parking chybí.' }) $true
     Check 'sousední karta jede dál' (WaitFor { NamedLike '^Škoda Fabia\s+CAR4WAY' }) $true

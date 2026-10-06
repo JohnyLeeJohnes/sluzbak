@@ -1,4 +1,4 @@
-# GolemWatch
+# Službák
 
 Desktopová aplikace pro Windows nad pražským [Golemio API](https://api.golemio.cz/docs/openapi/). Uživatel zadá vlastní
 API klíč a adresu (nebo souřadnice) a aplikace mu ukazuje, co se děje v okolí. Data se **nikam neukládají**, jen se
@@ -35,7 +35,7 @@ stahují a zobrazují. Vzorem je sesterský projekt Spáč (`C:\Projects\Persona
   funkce skriptu.
 - Sekce přehledu drží pohromadě jméno: funkce `Get-<Sekce>`, v XAML prvky `<Sekce>Card`, `<Sekce>Toggle`
   (záhlaví), `<Sekce>Meta`, `<Sekce>State`, `<Sekce>Body` a štítek `<Sekce>Chip` v nastavení. Data dostane
-  karta přes `DataContext`. Pořadí je v `$sections` (`GolemWatch.ps1`, kopie v `tests/e2e.ps1`).
+  karta přes `DataContext`. Pořadí je v `$sections` (`Sluzbak.ps1`, kopie v `tests/e2e.ps1`).
 - Přehled je jedna stránka: `DashboardGrid` se sloupci `Column1` až `3`. Záhlaví karty ji sbaluje
   (`Set-Collapsed`, stav v `$state.Collapsed`, ukládá se hned). Co je pod záhlavím vidět, rozhoduje jen
   `Update-Card` podle `$state.Shows`; viditelnost `State` a `Body` jinde nenastavovat.
@@ -44,26 +44,28 @@ stahují a zobrazují. Vzorem je sesterský projekt Spáč (`C:\Projects\Persona
   limitu API nevejde a čekaly by odjezdy. Sekce v `$live` se obnovují podle volby Refresh, ostatní po
   `$cacheSlow`, po chybě spojení za 30 s. Termín se počítá od doručení dat, aby paměť odpovědí byla při
   obnovení už prošlá. Ruční obnovení termíny zahodí a jde přes tutéž paměť.
-- Volby uživatele: výchozí hodnoty v `$defaultOptions` (`Golemio.ps1`), meze v `$limits` (`GolemWatch.ps1`),
+- Volby uživatele: výchozí hodnoty v `$defaultOptions` (`Golemio.ps1`), meze v `$limits` (`Sluzbak.ps1`),
   pole `<Volba>Box` v nastavení. Datová vrstva je čte přes `Get-Option $context <jméno>`, nikdy napevno.
   `ConvertTo-Option` srovná cokoli (text z pole, hodnotu ze souboru) do mezí.
-- Barvy jsou jen v paletě na začátku `GolemWatch.xaml`. Výjimka: barva titulku v `GolemWatch.ps1` (COLORREF)
+- Barvy jsou jen v paletě na začátku `Sluzbak.xaml`. Výjimka: barva titulku ve `Sluzbak.ps1` (COLORREF)
   musí odpovídat `Bg`.
 
 ## Příkazy
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File GolemWatch.ps1            # spuštění (s konzolí)
-powershell -ExecutionPolicy Bypass -File GolemWatch.ps1 -Demo      # ukázková data místo sítě
-powershell -ExecutionPolicy Bypass -File GolemWatch.ps1 -Demo -Screenshot docs\prehled.png
-powershell -ExecutionPolicy Bypass -File GolemWatch.ps1 -SettingsPath x.json -Screenshot docs\nastaveni.png
+powershell -ExecutionPolicy Bypass -File Sluzbak.ps1            # spuštění (s konzolí)
+powershell -ExecutionPolicy Bypass -File Sluzbak.ps1 -Demo      # ukázková data místo sítě
+powershell -ExecutionPolicy Bypass -File Sluzbak.ps1 -Demo -SettingsPath x.json -Screenshot docs\prehled.png
+powershell -ExecutionPolicy Bypass -File Sluzbak.ps1 -SettingsPath x.json -Screenshot docs\nastaveni.png
 powershell -ExecutionPolicy Bypass -File tools/make-icon.ps1       # ikona do assets/
-powershell -ExecutionPolicy Bypass -File tools/make-release.ps1    # dist/GolemWatch-<verze>.zip
+powershell -ExecutionPolicy Bypass -File tools/make-release.ps1    # dist/Sluzbak-<verze>.zip
 ```
 
-- `GolemWatch.cmd` spustí aplikaci bez konzole (`conhost --headless`), `install.cmd` vytvoří zástupce.
+- `Sluzbak.cmd` spustí aplikaci bez konzole (`conhost --headless`), `install.cmd` vytvoří zástupce.
 - `-SettingsPath` přesměruje nastavení mimo `%APPDATA%`; neexistující soubor = první spuštění.
 - `-Screenshot` počká na načtení rozbalených karet, natáhne okno na celý přehled, uloží PNG a skončí.
+  Obrázky do `docs/` vždy se `-SettingsPath` na neexistující soubor: s uloženým nastavením je v záhlaví
+  i při `-Demo` název a souřadnice skutečného místa uživatele.
 
 ## Testy
 
@@ -88,8 +90,8 @@ powershell -ExecutionPolicy Bypass -File tests/keys.ps1
 ## Struktura
 
 ```
-GolemWatch.ps1    okno: stav, nastavení na disku, úlohy na pozadí, obsluhy událostí, -Install
-GolemWatch.xaml   vzhled: paleta, styly, obrazovka nastavení a karty přehledu
+Sluzbak.ps1    okno: stav, nastavení na disku, úlohy na pozadí, obsluhy událostí, -Install
+Sluzbak.xaml   vzhled: paleta, styly, obrazovka nastavení a karty přehledu
 Golemio.ps1       datová vrstva: HTTP, JSON, poloha a čas, jedna funkce na sekci, Find-Address, Test-Token
 demo/             ukázkové odpovědi API (náměstí Míru), jméno souboru = cesta endpointu s pomlčkami
 assets/           ikona (generuje tools/make-icon.ps1)
@@ -99,9 +101,14 @@ tests/, tools/
 
 ## Rozhodnutí a omezení
 
+- **Jméno:** v textech pro lidi `Službák`, v souborech, identifikátorech, cestách a hlavičce `User-Agent`
+  `Sluzbak` (jen ASCII), repozitář `sluzbak`. Do verze 0.3.0 se aplikace jmenovala GolemWatch (přejmenoval
+  uživatel 6. 10. 2026). Kvůli tomu `Sluzbak.ps1` při startu stěhuje `%APPDATA%\GolemWatch` do
+  `%APPDATA%\Sluzbak` (jen bez `-SettingsPath`) a `-Install` maže zástupce `GolemWatch.lnk`. Vydání do
+  0.3.0 a jejich ZIPy na GitHubu nesou staré jméno.
 - **Větev je `master`**, ne `main`. Repozitář je na GitHubu soukromý a má to tak zůstat (rozhodnutí uživatele
   z 5. 10. 2026); Release proto stáhne jen ten, kdo má do repozitáře přístup. Licence je MIT.
-- **Klíč nikdy do repozitáře.** Nastavení je v `%APPDATA%\GolemWatch\settings.json`, klíč šifrovaný DPAPI.
+- **Klíč nikdy do repozitáře.** Nastavení je v `%APPDATA%\Sluzbak\settings.json`, klíč šifrovaný DPAPI.
   Uživatel zmínil i „temp“; zůstává AppData, protože `%TEMP%` Windows při úklidu maže.
 - Soubor s nastavením: `token`, `place`, `latitude`, `longitude`, `options` (`stopsRange`, `wasteRange`,
   `parkingRange`, `departures`, `refresh`, `hidden` = vypnuté sekce, `collapsed` = sbalené). Soubor bez
@@ -154,16 +161,17 @@ tests/, tools/
 ## Nová karta
 
 1. `Get-<Sekce>` v `Golemio.ps1` (vrací `Meta`, `Empty` a data) a ukázková odpověď v `demo/`.
-2. Karta `<Sekce>Card` (s `Toggle`, `Meta`, `State`, `Body`) a štítek `<Sekce>Chip` v `GolemWatch.xaml`.
-3. Jméno do `$sections` v `GolemWatch.ps1` i v `tests/e2e.ps1`; karta dole i do `$background`.
+2. Karta `<Sekce>Card` (s `Toggle`, `Meta`, `State`, `Body`) a štítek `<Sekce>Chip` ve `Sluzbak.xaml`.
+3. Jméno do `$sections` ve `Sluzbak.ps1` i v `tests/e2e.ps1`; karta dole i do `$background`.
 4. Testy v `tests/unit.ps1`, kontrola v `tests/e2e.ps1`, řádek v `tests/live.ps1` a v tabulce v README.
 
 ## Vydání
 
-1. Zvyš `$version` v `GolemWatch.ps1`; v `CHANGELOG.md` přidej sekci `## [x.y.z] - datum` a odkaz dole.
+1. Zvyš `$version` ve `Sluzbak.ps1`; v `CHANGELOG.md` přejmenuj `## [Nevydáno]` na `## [x.y.z] - datum`
+   (když chybí, sekci přidej) a uprav odkazy dole.
 2. Pusť `tests/unit.ps1` (hlídá, že obě čísla sedí), `tests/e2e.ps1` a `tests/keys.ps1`.
 3. Commit `Release vX.Y.Z`, push, anotovaný tag `vX.Y.Z`, push tagu.
-4. `tools/make-release.ps1` a `gh release create vX.Y.Z dist/GolemWatch-x.y.z.zip --title "GolemWatch x.y.z"`.
+4. `tools/make-release.ps1` a `gh release create vX.Y.Z dist/Sluzbak-x.y.z.zip --title "Službák x.y.z"`.
    Do poznámek patří postup z README (stáhnout, **odblokovat ZIP**, rozbalit, `install.cmd`).
 - ZIP stažený prohlížečem nese značku „z internetu“ a Explorer ji přenese na rozbalené soubory. PowerShell
   s `-ExecutionPolicy Bypass` je spustí (ověřeno i se Smart App Control), poklepání na takový `.cmd` ale
@@ -180,7 +188,9 @@ tests/, tools/
   `/v2/microclimate/points` (naživo pole s `point_name`), pozice zabalená do pole navíc. Číselníky ovzduší
   v `demo/` jsou opsané z živého API.
 - Neověřeno: stažení ZIPu prohlížečem a poklepání v Exploreru nikdo nezkoušel; ověřené je
-  rozbalení ZIPu do čisté složky a spuštění přes `GolemWatch.cmd` bez značky „z internetu“.
+  rozbalení ZIPu do čisté složky a spuštění přes `Sluzbak.cmd` bez značky „z internetu“.
+- Přejmenování na Službák (6. 10. 2026): stěhování nastavení a `-Install` jsou ověřené jen nanečisto
+  (dočasné `%APPDATA%`, dočasné složky místo plochy a nabídky Start). Pod novým jménem zatím nic nevyšlo.
 - Plán: uživatel chce z Golemia všechno. Co běžný klíč smí, je použité; zbytek čeká na přístup (seznam 403
   výše, žádá se na golemio@operatorict.cz).
 

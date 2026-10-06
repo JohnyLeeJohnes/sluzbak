@@ -1,4 +1,4 @@
-﻿# Vygeneruje assets/golemwatch.ico a assets/golemwatch.png:
+﻿# Vygeneruje assets/sluzbak.ico a assets/sluzbak.png:
 #   powershell -ExecutionPolicy Bypass -File tools/make-icon.ps1
 Add-Type -AssemblyName System.Drawing
 
@@ -107,6 +107,6 @@ for ($i = 0; $i -lt $sizes.Count; $i++) {
 foreach ($frame in $frames) { $w.Write($frame) }
 $w.Flush()
 
-[System.IO.File]::WriteAllBytes((Join-Path $assets 'golemwatch.ico'), $ico.ToArray())
-[System.IO.File]::WriteAllBytes((Join-Path $assets 'golemwatch.png'), (Png $bitmaps[0]))
-"OK: assets/golemwatch.ico ($($sizes -join ', ') px), assets/golemwatch.png"
+[System.IO.File]::WriteAllBytes((Join-Path $assets 'sluzbak.ico'), $ico.ToArray())
+[System.IO.File]::WriteAllBytes((Join-Path $assets 'sluzbak.png'), (Png $bitmaps[0]))
+"OK: assets/sluzbak.ico ($($sizes -join ', ') px), assets/sluzbak.png"

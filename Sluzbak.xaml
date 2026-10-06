@@ -1,8 +1,8 @@
-<!-- Okno aplikace. Načítá ho GolemWatch.ps1, takže tu nejsou žádné obsluhy událostí, jen vzhled a jména prvků.
+<!-- Okno aplikace. Načítá ho Sluzbak.ps1, takže tu nejsou žádné obsluhy událostí, jen vzhled a jména prvků.
      Karty přehledu dostávají data přes DataContext; názvy vlastností odpovídají objektům z Golemio.ps1. -->
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="GolemWatch" Width="1180" Height="780" MinWidth="980" MinHeight="620"
+        Title="Službák" Width="1180" Height="780" MinWidth="980" MinHeight="620"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource Bg}" Foreground="{DynamicResource Text}"
         FontFamily="Segoe UI" FontSize="13"
@@ -10,7 +10,7 @@
 
     <Window.Resources>
 
-        <!-- Paleta: noční Praha + pálená hlína. Barva Bg se zrcadlí v GolemWatch.ps1 (titulkový pruh). -->
+        <!-- Paleta: noční Praha + pálená hlína. Barva Bg se zrcadlí ve Sluzbak.ps1 (titulkový pruh). -->
         <SolidColorBrush x:Key="Bg" Color="#11141B"/>
         <SolidColorBrush x:Key="Well" Color="#0C0F15"/>
         <SolidColorBrush x:Key="Surface" Color="#191D27"/>
@@ -352,7 +352,7 @@
             <Setter Property="Margin" Value="12,1,0,0"/>
         </Style>
 
-        <!-- Stav karty: načítání, prázdno nebo chyba (barvu mění GolemWatch.ps1) -->
+        <!-- Stav karty: načítání, prázdno nebo chyba (barvu mění Sluzbak.ps1) -->
         <Style x:Key="CardState" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource Muted}"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
@@ -436,7 +436,7 @@
                     <Ellipse Width="34" Height="34" Stroke="{StaticResource Accent}" StrokeThickness="4"/>
                     <Ellipse Width="12" Height="12" Fill="{StaticResource Accent}"/>
                 </Grid>
-                <TextBlock Text="GolemWatch" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,10,0,0"/>
+                <TextBlock Text="Službák" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,10,0,0"/>
                 <TextBlock Foreground="{StaticResource Muted}" FontSize="14" TextAlignment="Center" TextWrapping="Wrap" Margin="0,6,0,0"
                            Text="Doprava, svoz odpadu, ovzduší a místa kolem tebe. Data z pražské platformy Golemio."/>
 
@@ -511,7 +511,7 @@
                     </StackPanel>
 
                     <!-- Vpravo volby. Všechno má výchozí hodnotu, vyplňovat se tu nic nemusí.
-                         Štítky se jmenují <sekce>Chip a pole <volba>Box; GolemWatch.ps1 je podle jmen hledá. -->
+                         Štítky se jmenují <sekce>Chip a pole <volba>Box; Sluzbak.ps1 je podle jmen hledá. -->
                     <StackPanel Grid.Column="2">
                         <TextBlock Style="{StaticResource FieldLabel}" Text="Co má přehled ukazovat"/>
                         <WrapPanel>

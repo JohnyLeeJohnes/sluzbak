@@ -368,7 +368,7 @@ Check 'místo se jménem čtvrti se neopakuje' (Format-Place @{ name = 'Vinohrad
 Check 'ověření klíče' (Test-Token $demo) $true
 
 '--- místa, kde si specifikace API protiřečí'
-$quirks = Join-Path ([IO.Path]::GetTempPath()) "golemwatch-test-$PID"
+$quirks = Join-Path ([IO.Path]::GetTempPath()) "sluzbak-test-$PID"
 Copy-Item $demo.Demo $quirks -Recurse
 try {
     $alt = @{ Token = ''; Demo = $quirks }
@@ -456,7 +456,7 @@ try {
 }
 
 '--- verze'
-$inApp = if ([IO.File]::ReadAllText((Join-Path $root 'GolemWatch.ps1')) -match "\`$version = '([\d.]+)'") { $Matches[1] }
+$inApp = if ([IO.File]::ReadAllText((Join-Path $root 'Sluzbak.ps1')) -match "\`$version = '([\d.]+)'") { $Matches[1] }
 $inLog = if ([IO.File]::ReadAllText((Join-Path $root 'CHANGELOG.md')) -match '(?m)^## \[(\d+\.\d+\.\d+)\]') { $Matches[1] }
 CheckMatch 'aplikace zná svou verzi' $inApp '^\d+\.\d+\.\d+$'
 Check 'verze v aplikaci je nejnovější verze v CHANGELOGu' $inApp $inLog
