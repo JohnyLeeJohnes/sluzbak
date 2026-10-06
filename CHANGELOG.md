@@ -3,7 +3,7 @@
 Všechny podstatné změny v projektu. Formát vychází z [Keep a Changelog](https://keepachangelog.com/cs/1.1.0/),
 verze se řídí [sémantickým verzováním](https://semver.org/lang/cs/).
 
-## [Nevydáno]
+## [0.4.0] - 2026-10-06
 
 ### Změněno
 
@@ -135,7 +135,7 @@ První vydání. Číslo začíná nulou, protože aplikace ještě neběžela s
 - Aplikace zatím neběžela proti skutečným datům z Golemia, jen proti ukázkovým odpovědím sestaveným podle
   specifikace API.
 
-[Nevydáno]: https://github.com/JohnyLeeJohnes/sluzbak/compare/v0.3.0...HEAD
+[0.4.0]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.4.0
 [0.3.0]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.3.0
 [0.2.1]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.2.1
 [0.2.0]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.2.0
