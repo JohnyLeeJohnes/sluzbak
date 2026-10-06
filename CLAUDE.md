@@ -189,8 +189,10 @@ tests/, tools/
   v `demo/` jsou opsané z živého API.
 - Neověřeno: stažení ZIPu prohlížečem a poklepání v Exploreru nikdo nezkoušel; ověřené je
   rozbalení ZIPu do čisté složky a spuštění přes `Sluzbak.cmd` bez značky „z internetu“.
-- Přejmenování na Službák (6. 10. 2026): stěhování nastavení a `-Install` jsou ověřené jen nanečisto
-  (dočasné `%APPDATA%`, dočasné složky místo plochy a nabídky Start). První vydání pod novým jménem je 0.4.0.
+- Přejmenování na Službák (6. 10. 2026): první vydání pod novým jménem je 0.4.0. Stěhování nastavení
+  i `-Install` jsou ověřené naostro na počítači uživatele: nastavení se přestěhovalo a se skutečným klíčem
+  se načetlo 9 karet z 10 (Mikroklima bez dat, viz výše). Zástupce tam vede do hlavní složky repozitáře
+  (`C:\Projects\Personal\sluzbak`), takže nainstalovaná aplikace běží z toho, co je v ní vytažené.
 - Plán: uživatel chce z Golemia všechno. Co běžný klíč smí, je použité; zbytek čeká na přístup (seznam 403
   výše, žádá se na golemio@operatorict.cz).
 
