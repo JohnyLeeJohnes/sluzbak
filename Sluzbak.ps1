@@ -45,7 +45,7 @@ if ($Install) {
     return
 }
 
-Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
+Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, Microsoft.VisualBasic
 . $library
 
 # Volání Windows API pro tmavý titulek. Když se Add-Type nepovede (třeba kvůli zásadám počítače),
@@ -606,9 +606,9 @@ try {
 
     $ui = @{}
     'SetupView', 'TokenBox', 'KeyLink', 'AddressBox', 'FindButton', 'ResultsList', 'LatitudeBox', 'LongitudeBox',
-    'LimitsHint', 'SaveButton', 'SetupStatus', 'BackButton', 'DemoButton', 'VersionText',
+    'LimitsHint', 'SaveButton', 'SetupStatus', 'BackButton', 'DemoButton', 'SetupGatewayButton', 'VersionText',
     'DashboardView', 'PlaceText', 'CoordinatesText', 'DemoBadge', 'UpdatedText', 'RefreshButton', 'SettingsButton',
-    'DashboardScroll', 'DashboardGrid', 'Column1', 'Column2', 'Column3' | ForEach-Object { $ui[$_] = $window.FindName($_) }
+    'GatewayButton', 'DashboardScroll', 'DashboardGrid', 'Column1', 'Column2', 'Column3' | ForEach-Object { $ui[$_] = $window.FindName($_) }
     foreach ($name in $sections) {
         'Card', 'Toggle', 'Meta', 'State', 'Body', 'Chip' | ForEach-Object { $ui["$name$_"] = $window.FindName("$name$_") }
     }
@@ -706,6 +706,44 @@ try {
         $state.Trial = $true
         Show-Dashboard -Reload
     })
+
+    # Když Službáka pustila Bránocesta, nechala v $env:BRANOCESTA cestu ke svému skriptu. Tlačítko ji otevře
+    # a Službáka zavře. Při spuštění vlastním zástupcem proměnná není a tlačítka zůstanou schovaná.
+    $gateway = $env:BRANOCESTA
+    if ($gateway -and (Split-Path $gateway -Leaf) -eq 'Branocesta.ps1' -and (Test-Path -LiteralPath $gateway)) {
+        # Službák se zavře, až když se okno brány ukáže, a pošle ho dopředu. Kdyby se zavřel hned, Windows by
+        # mezitím aktivovaly jiné okno a brána by se otevřela za ním. $handoff.Tag drží čas kliknutí.
+        $handoff = [Windows.Threading.DispatcherTimer]::new()
+        $handoff.Interval = [TimeSpan]::FromMilliseconds(150)
+        $handoff.Add_Tick({
+            $shown = $null
+            foreach ($process in [Diagnostics.Process]::GetProcessesByName('powershell')) {
+                try {
+                    if ($process.Id -ne $PID -and $process.StartTime -ge $handoff.Tag -and
+                        $process.MainWindowHandle -ne [IntPtr]::Zero) { $shown = $process.Id }
+                }
+                catch { }   # Proces mezitím skončil nebo k němu není přístup.
+                finally { $process.Dispose() }
+            }
+            if (-not $shown -and [DateTime]::Now -lt $handoff.Tag.AddSeconds(20)) { return }
+            $handoff.Stop()
+            # Když se brána neukázala, Službák zůstane otevřený, ať člověk neskončí bez okna.
+            if (-not $shown) { return }
+            try { [Microsoft.VisualBasic.Interaction]::AppActivate($shown) } catch { }
+            $window.Close()
+        })
+        foreach ($button in $ui.GatewayButton, $ui.SetupGatewayButton) {
+            $button.Visibility = 'Visible'
+            $button.Add_Click({
+                if ($handoff.IsEnabled) { return }
+                $handoff.Tag = [DateTime]::Now
+                # conhost --headless spustí PowerShell bez okna konzole, stejně jako zástupce.
+                Start-Process -FilePath "$env:SystemRoot\System32\conhost.exe" -WorkingDirectory (Split-Path $gateway) `
+                    -ArgumentList "--headless powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$gateway`""
+                $handoff.Start()
+            })
+        }
+    }
 
     # ---- Přehled ----
 

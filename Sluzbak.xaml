@@ -585,6 +585,14 @@
                     </Button>
                     <Button x:Name="DemoButton" Style="{StaticResource QuietButton}" Margin="4,0" Content="Zkusit s ukázkovými daty"
                             ToolTip="Ukáže přehled pro náměstí Míru s vymyšlenými daty. Nic se neuloží a nikam se nepřipojuje."/>
+                    <!-- Jen když Službáka pustila Bránocesta; ukazuje ho Sluzbak.ps1. -->
+                    <Button x:Name="SetupGatewayButton" Style="{StaticResource QuietButton}" Margin="4,0" Visibility="Collapsed"
+                            ToolTip="Zavře Službáka a otevře Bránocestu." AutomationProperties.Name="Zpět na Bránocestu">
+                        <TextBlock>
+                            <Run FontFamily="Segoe MDL2 Assets" FontSize="9" Text="&#xE72B;"/>
+                            <Run Text=" Bránocesta"/>
+                        </TextBlock>
+                    </Button>
                 </StackPanel>
                 <!-- Podle čísla verze člověk pozná, jestli má na GitHubu novější vydání. -->
                 <TextBlock x:Name="VersionText" Style="{StaticResource Small}" HorizontalAlignment="Center" Margin="0,16,0,0" Opacity="0.7"/>
@@ -630,6 +638,13 @@
                         <TextBlock>
                             <Run FontFamily="Segoe MDL2 Assets" FontSize="10" Text="&#xE713;"/>
                             <Run Text=" Nastavení"/>
+                        </TextBlock>
+                    </Button>
+                    <Button x:Name="GatewayButton" Style="{StaticResource QuietButton}" Margin="8,0,0,0" Visibility="Collapsed"
+                            ToolTip="Zavře Službáka a otevře Bránocestu." AutomationProperties.Name="Zpět na Bránocestu">
+                        <TextBlock>
+                            <Run FontFamily="Segoe MDL2 Assets" FontSize="10" Text="&#xE72B;"/>
+                            <Run Text=" Bránocesta"/>
                         </TextBlock>
                     </Button>
                 </StackPanel>
