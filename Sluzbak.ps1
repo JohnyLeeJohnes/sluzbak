@@ -9,7 +9,7 @@ param([switch]$Install, [switch]$Demo, [string]$SettingsPath, [string]$Screensho
 
 $ErrorActionPreference = 'Stop'
 # Číslo vydání. Musí sedět s nejnovější verzí v CHANGELOG.md (hlídá tests/unit.ps1), bere si ho tools/make-release.ps1.
-$version = '0.4.0'
+$version = '0.4.1'
 $icon = Join-Path $PSScriptRoot 'assets\sluzbak.ico'
 $library = Join-Path $PSScriptRoot 'Golemio.ps1'
 $demoDirectory = Join-Path $PSScriptRoot 'demo'

@@ -54,8 +54,9 @@ a dřív se pro ně na síť nejde. Minimalizované okno nestahuje nic a po náv
 
 ## Instalace
 
-1. Na stránce [Releases](https://github.com/JohnyLeeJohnes/sluzbak/releases/latest) stáhni
-   `Sluzbak-<verze>.zip`.
+1. Stáhni [Sluzbak.zip](https://github.com/JohnyLeeJohnes/sluzbak/releases/latest/download/Sluzbak.zip).
+   Odkaz vede vždy na nejnovější verzi; starší jsou na stránce
+   [Releases](https://github.com/JohnyLeeJohnes/sluzbak/releases).
 2. Klikni na stažený ZIP pravým tlačítkem, zvol **Vlastnosti**, dole zaškrtni **Odblokovat** a potvrď.
 3. Rozbal ho tam, kde má aplikace zůstat, třeba do Dokumentů.
 4. Ve složce `Sluzbak` poklepej na **`install.cmd`**. Vytvoří zástupce **Službák** s ikonou v nabídce
@@ -206,6 +207,7 @@ Změny se zapisují do [CHANGELOG.md](CHANGELOG.md).
 **In English:** Službák is a small Windows desktop dashboard on top of Prague's Golemio open-data API. Enter
 your own API key and an address, and it shows nearby public-transport departures and vehicles, service
 alerts, parking, shared cars, a bicycle counter, waste collection days, nearby amenities, air quality and
-microclimate sensors. It is a PowerShell script with a WPF window: download the ZIP from
-the Releases page, unblock and extract it, and run `install.cmd` to get a shortcut. Nothing to compile or install. Nothing is stored except your settings. The
-interface is in Czech.
+microclimate sensors. It is a PowerShell script with a WPF window: download
+[Sluzbak.zip](https://github.com/JohnyLeeJohnes/sluzbak/releases/latest/download/Sluzbak.zip) (always the
+latest version), unblock and extract it, and run `install.cmd` to get a shortcut. Nothing to compile or
+install. Nothing is stored except your settings. The interface is in Czech.

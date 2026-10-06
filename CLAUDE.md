@@ -58,7 +58,7 @@ powershell -ExecutionPolicy Bypass -File Sluzbak.ps1 -Demo      # ukázková dat
 powershell -ExecutionPolicy Bypass -File Sluzbak.ps1 -Demo -SettingsPath x.json -Screenshot docs\prehled.png
 powershell -ExecutionPolicy Bypass -File Sluzbak.ps1 -SettingsPath x.json -Screenshot docs\nastaveni.png
 powershell -ExecutionPolicy Bypass -File tools/make-icon.ps1       # ikona do assets/
-powershell -ExecutionPolicy Bypass -File tools/make-release.ps1    # dist/Sluzbak-<verze>.zip
+powershell -ExecutionPolicy Bypass -File tools/make-release.ps1    # dist/Sluzbak.zip
 ```
 
 - `Sluzbak.cmd` spustí aplikaci bez konzole (`conhost --headless`), `install.cmd` vytvoří zástupce.
@@ -106,8 +106,9 @@ tests/, tools/
   uživatel 6. 10. 2026). Kvůli tomu `Sluzbak.ps1` při startu stěhuje `%APPDATA%\GolemWatch` do
   `%APPDATA%\Sluzbak` (jen bez `-SettingsPath`) a `-Install` maže zástupce `GolemWatch.lnk`. Vydání do
   0.3.0 se na GitHubu jmenují Službák; jejich ZIPy, soubory v nich a popisky tagů nesou staré jméno.
-- **Větev je `master`**, ne `main`. Repozitář je na GitHubu soukromý a má to tak zůstat (rozhodnutí uživatele
-  z 5. 10. 2026); Release proto stáhne jen ten, kdo má do repozitáře přístup. Licence je MIT.
+- **Větev je `master`**, ne `main`. Repozitář je na GitHubu od 6. 10. 2026 veřejný (rozhodnutí uživatele;
+  den předtím měl zůstat soukromý), takže Release i odkaz na nejnovější ZIP stáhne kdokoli bez přihlášení.
+  Licence je MIT.
 - **Klíč nikdy do repozitáře.** Nastavení je v `%APPDATA%\Sluzbak\settings.json`, klíč šifrovaný DPAPI.
   Uživatel zmínil i „temp“; zůstává AppData, protože `%TEMP%` Windows při úklidu maže.
 - Soubor s nastavením: `token`, `place`, `latitude`, `longitude`, `options` (`stopsRange`, `wasteRange`,
@@ -171,8 +172,11 @@ tests/, tools/
    (když chybí, sekci přidej) a uprav odkazy dole.
 2. Pusť `tests/unit.ps1` (hlídá, že obě čísla sedí), `tests/e2e.ps1` a `tests/keys.ps1`.
 3. Commit `Release vX.Y.Z`, push, anotovaný tag `vX.Y.Z`, push tagu.
-4. `tools/make-release.ps1` a `gh release create vX.Y.Z dist/Sluzbak-x.y.z.zip --title "Službák x.y.z"`.
+4. `tools/make-release.ps1` a `gh release create vX.Y.Z dist/Sluzbak.zip --title "Službák x.y.z"`.
    Do poznámek patří postup z README (stáhnout, **odblokovat ZIP**, rozbalit, `install.cmd`).
+- ZIP se od 0.4.1 jmenuje vždy `Sluzbak.zip`, bez verze: README odkazuje na
+  `releases/latest/download/Sluzbak.zip` a ten odkaz funguje, jen když se soubor jmenuje v každém vydání
+  stejně. Jméno neměnit a k vydání nepřikládat nic dalšího. Vydání do 0.4.0 mají verzi v názvu ZIPu.
 - ZIP stažený prohlížečem nese značku „z internetu“ a Explorer ji přenese na rozbalené soubory. PowerShell
   s `-ExecutionPolicy Bypass` je spustí (ověřeno i se Smart App Control), poklepání na takový `.cmd` ale
   Windows brzdí. Proto krok „Odblokovat“ a `Unblock-File` v `-Install`.

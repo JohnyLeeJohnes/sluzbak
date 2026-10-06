@@ -1,6 +1,8 @@
 ﻿# Sestaví ZIP pro GitHub Release do složky dist/:
 #   powershell -ExecutionPolicy Bypass -File tools/make-release.ps1
-# V ZIPu je složka Sluzbak jen s tím, co aplikace potřebuje k běhu. Číslo verze se bere ze Sluzbak.ps1.
+# V ZIPu je složka Sluzbak jen s tím, co aplikace potřebuje k běhu.
+# Jmenuje se vždy Sluzbak.zip, bez čísla verze: odkaz releases/latest/download/Sluzbak.zip vede na nejnovější
+# vydání jen tehdy, když se soubor jmenuje ve všech vydáních stejně. Verzi ze Sluzbak.ps1 skript jen vypíše.
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
 
@@ -16,7 +18,7 @@ $items = @('Sluzbak.ps1', 'Sluzbak.xaml', 'Golemio.ps1', 'Sluzbak.cmd', 'install
 
 $dist = Join-Path $root 'dist'
 $null = New-Item -ItemType Directory -Force $dist
-$zipPath = Join-Path $dist "Sluzbak-$version.zip"
+$zipPath = Join-Path $dist 'Sluzbak.zip'
 if (Test-Path $zipPath) { Remove-Item $zipPath }
 
 $zip = [IO.Compression.ZipFile]::Open($zipPath, 'Create')
@@ -38,4 +40,4 @@ try {
     }
 } finally { $zip.Dispose() }
 
-"OK: dist/Sluzbak-$version.zip ($([Math]::Round((Get-Item $zipPath).Length / 1KB)) kB)"
+"OK: dist/Sluzbak.zip, verze $version ($([Math]::Round((Get-Item $zipPath).Length / 1KB)) kB)"

@@ -3,6 +3,14 @@
 Všechny podstatné změny v projektu. Formát vychází z [Keep a Changelog](https://keepachangelog.com/cs/1.1.0/),
 verze se řídí [sémantickým verzováním](https://semver.org/lang/cs/).
 
+## [0.4.1] - 2026-10-06
+
+### Změněno
+
+- ZIP ke stažení se jmenuje vždy `Sluzbak.zip`, bez čísla verze. Odkaz
+  <https://github.com/JohnyLeeJohnes/sluzbak/releases/latest/download/Sluzbak.zip> tak vede pořád na
+  nejnovější verzi a README na něj míří rovnou. V aplikaci samotné se nezměnilo nic.
+
 ## [0.4.0] - 2026-10-06
 
 ### Změněno
@@ -135,6 +143,7 @@ První vydání. Číslo začíná nulou, protože aplikace ještě neběžela s
 - Aplikace zatím neběžela proti skutečným datům z Golemia, jen proti ukázkovým odpovědím sestaveným podle
   specifikace API.
 
+[0.4.1]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.4.1
 [0.4.0]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.4.0
 [0.3.0]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.3.0
 [0.2.1]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.2.1
