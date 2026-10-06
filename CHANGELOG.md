@@ -3,6 +3,14 @@
 Všechny podstatné změny v projektu. Formát vychází z [Keep a Changelog](https://keepachangelog.com/cs/1.1.0/),
 verze se řídí [sémantickým verzováním](https://semver.org/lang/cs/).
 
+## [0.5.0] - 2026-10-06
+
+### Přidáno
+
+- Tlačítko **Bránocesta**. Když Službáka pustíš z [Bránocesty](https://github.com/JohnyLeeJohnes/branocesta),
+  je v záhlaví přehledu a na obrazovce nastavení; Službáka zavře a bránu znovu otevře. Při spuštění
+  vlastním zástupcem tlačítko vidět není.
+
 ## [0.4.1] - 2026-10-06
 
 ### Změněno
@@ -143,6 +151,7 @@ První vydání. Číslo začíná nulou, protože aplikace ještě neběžela s
 - Aplikace zatím neběžela proti skutečným datům z Golemia, jen proti ukázkovým odpovědím sestaveným podle
   specifikace API.
 
+[0.5.0]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.5.0
 [0.4.1]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.4.1
 [0.4.0]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.4.0
 [0.3.0]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.3.0
