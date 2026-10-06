@@ -105,7 +105,7 @@ tests/, tools/
   `Sluzbak` (jen ASCII), repozitář `sluzbak`. Do verze 0.3.0 se aplikace jmenovala GolemWatch (přejmenoval
   uživatel 6. 10. 2026). Kvůli tomu `Sluzbak.ps1` při startu stěhuje `%APPDATA%\GolemWatch` do
   `%APPDATA%\Sluzbak` (jen bez `-SettingsPath`) a `-Install` maže zástupce `GolemWatch.lnk`. Vydání do
-  0.3.0 a jejich ZIPy na GitHubu nesou staré jméno.
+  0.3.0 se na GitHubu jmenují Službák; jejich ZIPy, soubory v nich a popisky tagů nesou staré jméno.
 - **Větev je `master`**, ne `main`. Repozitář je na GitHubu soukromý a má to tak zůstat (rozhodnutí uživatele
   z 5. 10. 2026); Release proto stáhne jen ten, kdo má do repozitáře přístup. Licence je MIT.
 - **Klíč nikdy do repozitáře.** Nastavení je v `%APPDATA%\Sluzbak\settings.json`, klíč šifrovaný DPAPI.
