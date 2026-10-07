@@ -3,6 +3,18 @@
 Všechny podstatné změny v projektu. Formát vychází z [Keep a Changelog](https://keepachangelog.com/cs/1.1.0/),
 verze se řídí [sémantickým verzováním](https://semver.org/lang/cs/).
 
+## [0.6.0] - 2026-10-07
+
+### Přidáno
+
+- Vlastní ikona na hlavním panelu. Dosud tam Službák měl ikonu PowerShellu, který jeho okno hostí.
+
+### Změněno
+
+- Tlačítko **Bránocesta** je zpátky v bráně hned. Bránocesta od verze 1.5.0 se za Službákem nezavírá, jen
+  se schová; tlačítko ji zavolá a nic se nestartuje. Se starší bránou se chová jako dřív a otevře ji znovu.
+- Službák startuje rychleji: kvůli tmavému titulku okna už nepouští kompilátor C#.
+
 ## [0.5.0] - 2026-10-06
 
 ### Přidáno
@@ -151,6 +163,7 @@ První vydání. Číslo začíná nulou, protože aplikace ještě neběžela s
 - Aplikace zatím neběžela proti skutečným datům z Golemia, jen proti ukázkovým odpovědím sestaveným podle
   specifikace API.
 
+[0.6.0]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.6.0
 [0.5.0]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.5.0
 [0.4.1]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.4.1
 [0.4.0]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.4.0

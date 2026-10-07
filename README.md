@@ -69,7 +69,7 @@ a dřív se pro ně na síť nejde. Minimalizované okno nestahuje nic a po náv
 - **Jen vyzkoušet:** poklepej na `Sluzbak.cmd`, spustí aplikaci bez vytváření zástupců.
 - **S Bránocestou:** Službáka umí nainstalovat a spouštět i [Bránocesta](https://github.com/JohnyLeeJohnes/branocesta).
   Když ho pustíš z ní, má v záhlaví přehledu a na obrazovce nastavení tlačítko **Bránocesta**, které ho
-  zavře a bránu znovu otevře.
+  zavře a bránu vrátí. S Bránocestou od verze 1.5.0 je zpátky hned, protože za Službákem čeká schovaná.
 - **Nová verze:** stáhni ji stejně a rozbal přes tu starou. Nastavení zůstane, je uložené jinde. Kterou
   verzi máš, je napsané dole na obrazovce nastavení.
 - **Přechod z GolemWatch:** tak se aplikace jmenovala do verze 0.3.0. Rozbal Službák vedle a spusť
