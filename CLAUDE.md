@@ -122,7 +122,9 @@ tests/, tools/
   kontejner (plasty + nápojové kartony), ne směsný odpad; přejmenovává ho `$wasteNames`.
 - **Žádné vlastní binárky.** Na vývojovém počítači (Windows 11 ARM64) je zapnutý Smart App Control a blokuje
   nepodepsané `.exe` i `.dll`, včetně těch právě sestavených (`0x800711C7`). Proto skript, ne C#.
-  - `Add-Type` s C# kódem jen v `try/catch` a jen pro věci, bez kterých aplikace běží dál (tmavý titulek).
+  - Volání Windows API: typ složený za běhu přes `Reflection.Emit` (`$native` ve `Sluzbak.ps1`), ne `Add-Type`
+    s kódem v C#; ten při každém startu pouští kompilátor a zdržuje. Vždy v `try/catch` a jen pro věci, bez
+    kterých aplikace běží dál (tmavý titulek, vlastní ikona na hlavním panelu).
   - Nastavení Windows neměnit ani neobcházet; je to rozhodnutí uživatele.
 - Pasti PowerShellu 5.1:
   - `ConvertFrom-Json` neunese odpověď nad 2 MB (seznam zastávek) → `ConvertFrom-ApiJson`;
