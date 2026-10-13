@@ -40,7 +40,7 @@ const demo = { token: '', demo: readFrom() };
 
 // ---- Porovnání s počítačem ----
 
-const sections = ['transit', 'vehicles', 'waste', 'alerts', 'cars', 'cycling', 'air', 'microclimate', 'parking', 'nearby'];
+const sections = ['transit', 'vehicles', 'waste', 'alerts', 'cars', 'cycling', 'air', 'weather', 'parking', 'nearby'];
 const cases = [
     { name: 'náměstí Míru', options: {}, lat, lng },
     { name: 'užší okruhy', options: { stopsRange: 300, wasteRange: 100, parkingRange: 600, departures: 4 }, lat, lng },
@@ -211,6 +211,9 @@ async function main() {
     const waste = await golemio.getWaste(demo, lat, lng);
     check('druhy podle nejbližšího svozu, papír jen jednou', waste.stations[0].kinds.map(kind => kind.type).join(', '), 'Plasty a nápojové kartony, Papír, Kovy, Barevné sklo');
     check('odjezdy a zastávky pro příští obnovení', await golemio.getTransit(demo, lat, lng, null).then(transit => `${transit.departures.length} ${transit.stops.length} ${transit.departures[1].in}`), '9 5 za 3 min');
+    const details = (await golemio.getTransit(demo, lat, lng, null)).departures.map(departure => departure.detail.split('\n').slice(1).join(', '));
+    check('podrobnosti spoje: zpoždění, poloha a vůz', details[1], 'Zpoždění 2 min, Naposledy v zastávce Jana Masaryka, Bezbariérový spoj, S klimatizací');
+    check('podrobnosti: co API neví, se vynechá', details[3], 'Zpoždění není známé, Bezbariérový spoj');
     check('bez voleb platí výchozí, s volbou volba', `${golemio.getOption(demo, 'stopsRange')} ${golemio.getOption({ options: { stopsRange: 300 } }, 'stopsRange')}`, '600 300');
 
     console.log('--- otevírací doba');
@@ -320,10 +323,17 @@ async function main() {
     const listed = await golemio.getAir(withFiles({ [history]: null, 'v2-airqualitystations.json': text => text.replace('2026-08-12T06:45:00.621Z', '{{now-25}}') }), lat, lng);
     check('bez historie: čerstvý stav ze seznamu', `${listed.index} ${listed.components[0].value}`, 'Zhoršená až špatná 77,7 µg/m³');
     const onePoint = { 'v2-microclimate-points.json': () => '{"point_id": 207, "location_id": 200, "point_name": "Jediný bod", "lat": 50.0779, "lng": 14.45, "measures": []}' };
-    const single = await golemio.getMicroclimate(withFiles(onePoint), lat, lng);
+    const single = await golemio.getWeather(withFiles(onePoint), lat, lng);
     check('jeden bod místo seznamu', /^Jediný bod · \d+ m$/.test(single.meta), true);
     check('bez číselníku veličin zůstane kód', single.values.find(value => value.name === 'uv_index').value, '2');
-    check('mikroklima bez měření', (await golemio.getMicroclimate(withFiles({ ...onePoint, 'v2-microclimate-measurements.json': () => '[]' }), lat, lng)).empty, 'Golemio teď nemá čerstvá data z žádného senzoru mikroklimatu.');
+    // Když senzory mlčí (naživo od dubna 2026), zbývá teplota od cyklosčítače. Nejbližší sčítač teploměr nemá, vezme se až další.
+    const silent = { 'v2-microclimate-measurements.json': () => '[]' };
+    const counter = await golemio.getWeather(withFiles(silent), lat, lng);
+    check('senzory mlčí: teploměr u cyklosčítače', `${counter.meta} | ${counter.values.map(value => `${value.name} ${value.value}`)} | ${/^měřeno v \d{1,2}:\d\d$/.test(counter.updated)}`,
+        'cyklosčítač Podolské nábřeží · 2,5 km | Teplota 14 °C | true');
+    check('senzory selžou: teplota zůstane', (await golemio.getWeather(withFiles({ 'v2-microclimate-points.json': null }), lat, lng)).values[0].value, '14 °C');
+    const stale = { ...silent, 'v2-bicyclecounters-temperatures.json': () => '[{"id": "camea-BC_PN-VYBR", "value": 9, "measured_to": "{{now-90}}"}]' };
+    check('stará teplota se neukáže', (await golemio.getWeather(withFiles(stale), lat, lng)).empty, 'Golemio teď z okolí nemá čerstvé měření ze senzoru mikroklimatu ani z teploměru u cyklosčítače.');
     const noTrip = (await golemio.getVehicles(withFiles({ 'v2-public-gtfs-trips-22_1840_260901.json': null }), lat, lng)).items.find(item => item.route === '22');
     check('vozidlo bez popisu spoje', `${noTrip.headsign}|${noTrip.state}`, '|směr Z');
     // Klíč bez přístupu k velkoobjemovým kontejnerům: část se schová, není to chyba.

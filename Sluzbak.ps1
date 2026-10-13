@@ -88,7 +88,7 @@ $unnamed = 'Vlastní místo'
 # Sekce (karty) přehledu v pořadí, v jakém jsou v okně po sloupcích. Ke každé patří funkce Get-<sekce>
 # v Golemio.ps1, v přehledu prvky <sekce>Card, <sekce>Toggle (záhlaví, které kartu sbaluje), <sekce>Meta,
 # <sekce>State a <sekce>Body a v nastavení štítek <sekce>Chip.
-$sections = 'Transit', 'Vehicles', 'Waste', 'Alerts', 'Cars', 'Cycling', 'Air', 'Microclimate', 'Parking', 'Nearby'
+$sections = 'Transit', 'Vehicles', 'Waste', 'Alerts', 'Cars', 'Cycling', 'Air', 'Weather', 'Parking', 'Nearby'
 # Sekce, kde jde o minuty, se obnovují s odjezdy; ostatním stačí jednou za deset minut.
 $live = 'Transit', 'Vehicles'
 # Sekce dole na stránce. Všechny karty naráz se do limitu API nevejdou (první načtení je přes 30 dotazů,

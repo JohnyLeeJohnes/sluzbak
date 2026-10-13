@@ -411,6 +411,8 @@ function Get-Waste($context, [double]$latitude, [double]$longitude) {
         ShowBulky = $bulkyAllowed
         Bulky = $bulky
         BulkyNote = if ($bulkyError) { $bulkyError } elseif ($bulkyAllowed -and -not $bulky) { 'V okolí teď žádný není v plánu.' } else { '' }
+        # Na směsný odpad se lidé ptají; ať je z karty vidět, že nechybí omylem.
+        Note = 'Směsný odpad Golemio neeviduje, jen tříděný.'
         Empty = if ($nests) { '' } else { "Do $(Format-Distance $range) žádné stanoviště tříděného odpadu není." }
     }
 }
@@ -507,7 +509,9 @@ function Get-Air($context, [double]$latitude, [double]$longitude) {
     }
 }
 
-# ---- Mikroklima ----
+# ---- Počasí ----
+# Předpověď ani srážky nad městem Golemio nemá. Co se venku děje, měří městské senzory mikroklimatu (teplota,
+# vlhkost, tlak, vítr, srážky). Když mlčí, zbývá teplota vzduchu, kterou hlásí teploměry u cyklosčítačů.
 
 # Veličiny v pořadí, v jakém je karta ukazuje. Kód z API má za názvem výšku čidla v cm (air_temp200).
 $microclimateMeasures = [ordered]@{
@@ -524,10 +528,11 @@ function Format-Measure([string]$base, $value, [string]$unit) {
     ((Format-Number $value), $unit | Where-Object { $_ }) -join ' '
 }
 
+# Měření z nejbližšího senzoru mikroklimatu, který v posledních dvou hodinách něco hlásil. Nic, když žádný takový není.
 function Get-Microclimate($context, [double]$latitude, [double]$longitude) {
     # Specifikace tu popisuje jeden objekt, i když jde o seznam; @() srovná obojí.
     $points = @(@(Get-Cached $context '/v2/microclimate/points') | Where-Object { $_ -and $null -ne $_.lat -and $null -ne $_.lng -and $null -ne $_.point_id })
-    if (-not $points) { return [pscustomobject]@{ Meta = ''; Empty = 'Golemio nevrátilo žádný senzor mikroklimatu.' } }
+    if (-not $points) { return }
 
     # Jeden dotaz na všechny senzory: nejbližší často mlčí a zkoušet je po jednom by stálo dotaz za každý.
     $measured = @{}
@@ -539,7 +544,7 @@ function Get-Microclimate($context, [double]$latitude, [double]$longitude) {
     }
     $point = @($points | Where-Object { $measured.ContainsKey([string]$_.point_id) } |
         Sort-Object { Get-Distance $latitude $longitude ([double]$_.lat) ([double]$_.lng) })[0]
-    if (-not $point) { return [pscustomobject]@{ Meta = ''; Empty = 'Golemio teď nemá čerstvá data z žádného senzoru mikroklimatu.' } }
+    if (-not $point) { return }
 
     $latest = $null
     $order = @($microclimateMeasures.Keys)
@@ -568,6 +573,53 @@ function Get-Microclimate($context, [double]$latitude, [double]$longitude) {
         Updated = if ($latest) { 'měřeno v ' + (Format-Clock $latest) } else { '' }
         Empty = ''
     }
+}
+
+# Kolik nejbližších cyklosčítačů se čte. Karta Cyklosčítač z nich bere tři; teploměr má jen část, proto jich je víc.
+# Obě karty se ptají stejně, takže seznam stačí stáhnout jednou.
+$counterLimit = 8
+# Teplota z teploměru dál než tolik metrů nebo starší než tolik minut už o počasí tady a teď nic neříká.
+$temperatureRange = 10000
+$temperatureMinutes = 60
+
+# Teplota vzduchu z nejbližšího cyklosčítače, který ji měří. Nic, když žádný takový v dosahu není.
+function Get-CounterTemperature($context, [double]$latitude, [double]$longitude) {
+    $counters = Invoke-Api $context '/v2/bicyclecounters' ([ordered]@{ latlng = Format-LatLng $latitude $longitude; limit = $counterLimit })
+    $near = @(Get-Features $counters $latitude $longitude | Where-Object { $_.Distance -le $temperatureRange -and $_.Properties.id } | Sort-Object { $_.Distance })
+    if (-not $near) { return }
+
+    # Teploměry hlásí po pěti minutách; od každého stačí poslední řádek.
+    $now = Get-PragueNow
+    $latest = @{}
+    foreach ($row in @(Invoke-Api $context '/v2/bicyclecounters/temperatures' ([ordered]@{
+        'id[]' = @($near | ForEach-Object { [string]$_.Properties.id }); from = Format-Utc (Get-HoursAgo 1)
+    }))) {
+        if (-not $row -or $null -eq $row.value) { continue }
+        $time = ConvertTo-PragueTime $row.measured_to
+        if (-not $time -or ($now - $time).TotalMinutes -gt $temperatureMinutes) { continue }
+        $id = [string]$row.id
+        if (-not $latest.ContainsKey($id) -or $time -gt $latest[$id].Time) { $latest[$id] = @{ Time = $time; Value = $row.value } }
+    }
+    $counter = @($near | Where-Object { $latest.ContainsKey([string]$_.Properties.id) })[0]
+    if (-not $counter) { return }
+
+    $reading = $latest[[string]$counter.Properties.id]
+    [pscustomobject]@{
+        Meta = "cyklosčítač $($counter.Properties.name) · $(Format-Distance $counter.Distance)"
+        Values = @([pscustomobject]@{ Name = 'Teplota'; Value = (Format-Number $reading.Value) + ' °C' })
+        Updated = 'měřeno v ' + (Format-Clock $reading.Time)
+        Empty = ''
+    }
+}
+
+function Get-Weather($context, [double]$latitude, [double]$longitude) {
+    # Senzor mikroklimatu měří víc veličin, proto má přednost. Jeho chyba ale nesmí schovat teplotu ze sčítače:
+    # od dubna 2026 senzory mlčí a kdoví, co s nimi Golemio udělá.
+    $sensor = try { Get-Microclimate $context $latitude $longitude } catch { $null }
+    if ($sensor) { return $sensor }
+    $counter = Get-CounterTemperature $context $latitude $longitude
+    if ($counter) { return $counter }
+    [pscustomobject]@{ Meta = ''; Empty = 'Golemio teď z okolí nemá čerstvé měření ze senzoru mikroklimatu ani z teploměru u cyklosčítače.' }
 }
 
 # ---- Parkování ----
@@ -712,7 +764,9 @@ function Get-Transit($context, [double]$latitude, [double]$longitude, $stops) {
         if (-not $time) { return }
 
         $minutes = [int][Math]::Floor(($time - $now).TotalMinutes)
-        $delay = if ($_.delay.is_available -and $null -ne $_.delay.seconds) { [int][Math]::Round([double]$_.delay.seconds / 60) } else { 0 }
+        # Zpoždění zná API jen u vozu, který hlásí polohu.
+        $tracked = [bool]$_.delay.is_available -and $null -ne $_.delay.seconds
+        $delay = if ($tracked) { [int][Math]::Round([double]$_.delay.seconds / 60) } else { 0 }
         $stop = $names[[string]$_.stop.id]
         $platform = @($_.stop.platform_code, $stop.Platform | Where-Object { $_ })[0]
         $route = [string]$_.route.short_name
@@ -720,7 +774,29 @@ function Get-Transit($context, [double]$latitude, [double]$longitude, $stops) {
         $color = Get-RouteColor $type $route
         $canceled = [bool]$_.trip.is_canceled
 
+        # Co se do řádku nevejde: na počítači je to v bublině, v telefonu po ťuknutí na řádek.
+        # Bezbariérovost a klimatizaci API u některých spojů neví (null); pak se o nich mlčí.
+        $detail = @(
+            if ($canceled) { 'Spoj je zrušený' }
+            if ($scheduled) { 'Podle jízdního řádu v ' + (Format-Clock $scheduled) }
+            if (-not $canceled) {
+                if (-not $tracked) { 'Zpoždění není známé' }
+                elseif ($delay -ge 1) { "Zpoždění $delay min" }
+                elseif ($delay -le -1) { "Napřed o $(-$delay) min" }
+                else { 'Jede načas' }
+            }
+            if ($_.last_stop.name) { "Naposledy v zastávce $($_.last_stop.name)" }
+            if ($null -ne $_.trip.is_wheelchair_accessible) { if ($_.trip.is_wheelchair_accessible) { 'Bezbariérový spoj' } else { 'Spoj není bezbariérový' } }
+            if ($null -ne $_.trip.is_air_conditioned) { if ($_.trip.is_air_conditioned) { 'S klimatizací' } else { 'Bez klimatizace' } }
+            if ($_.route.is_night) { 'Noční linka' }
+            if ($_.route.is_regional) { 'Příměstská linka' }
+            if ($_.route.is_substitute_transport) { 'Náhradní doprava' }
+            if ($_.trip.short_name) { "Vlak $($_.trip.short_name)" }
+        ) -join "`n"
+
         [pscustomobject]@{
+            # Podle klíče telefon pozná tentýž řádek i po obnovení a nechá ho rozbalený.
+            Key = "$($_.trip.id)|$($_.stop.id)"
             Route = $route
             Color = $color
             # Žlutá linka B potřebuje tmavé písmo, na ostatních barvách je čitelné bílé.
@@ -731,6 +807,7 @@ function Get-Transit($context, [double]$latitude, [double]$longitude, $stops) {
             InColor = if ($canceled) { '#FF8A80' } else { '#ECEEF4' }
             Time = Format-Clock $time
             Delay = if ($delay -ge 1 -and -not $canceled) { "+$delay min" } else { '' }
+            Detail = $detail
             Opacity = if ($canceled) { 0.55 } else { 1.0 }
         }
     })
@@ -850,7 +927,7 @@ function Get-Cars($context, [double]$latitude, [double]$longitude) {
 # ---- Cyklosčítače ----
 
 function Get-Cycling($context, [double]$latitude, [double]$longitude) {
-    $counters = Invoke-Api $context '/v2/bicyclecounters' ([ordered]@{ latlng = Format-LatLng $latitude $longitude; limit = 3 })
+    $counters = Invoke-Api $context '/v2/bicyclecounters' ([ordered]@{ latlng = Format-LatLng $latitude $longitude; limit = $counterLimit })
     $near = @(Get-Features $counters $latitude $longitude | Sort-Object { $_.Distance } | Select-Object -First 3)
     if (-not $near) { return [pscustomobject]@{ Meta = ''; Empty = 'Golemio nevrátilo žádný cyklosčítač.' } }
 

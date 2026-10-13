@@ -36,7 +36,7 @@
     <main id="setupView" class="setup" hidden>
         <img class="logo" src="icon-192.png" alt="" width="56" height="56">
         <h1>Službák</h1>
-        <p class="lead">Doprava, svoz odpadu, ovzduší a místa kolem tebe. Data z pražské platformy Golemio.</p>
+        <p class="lead">Doprava, svoz odpadu, ovzduší, počasí a místa kolem tebe. Data z pražské platformy Golemio.</p>
 
         <form id="setupForm" novalidate>
             <div class="group">
@@ -80,7 +80,7 @@
                     <label class="chip"><input type="checkbox" id="carsChip"><span>Sdílená auta</span></label>
                     <label class="chip"><input type="checkbox" id="cyclingChip"><span>Cyklosčítač</span></label>
                     <label class="chip"><input type="checkbox" id="airChip"><span>Ovzduší</span></label>
-                    <label class="chip"><input type="checkbox" id="microclimateChip"><span>Mikroklima</span></label>
+                    <label class="chip"><input type="checkbox" id="weatherChip"><span>Počasí</span></label>
                     <label class="chip"><input type="checkbox" id="parkingChip"><span>Parkování</span></label>
                     <label class="chip"><input type="checkbox" id="nearbyChip"><span>V okolí</span></label>
                 </div>
@@ -195,10 +195,10 @@
             <div id="airBody" class="body" hidden></div>
         </section>
 
-        <section id="microclimateCard" class="card">
-            <button id="microclimateToggle" class="head"><h2>Mikroklima</h2><span id="microclimateMeta" class="small"></span></button>
-            <p id="microclimateState" class="small state"></p>
-            <div id="microclimateBody" class="body" hidden></div>
+        <section id="weatherCard" class="card">
+            <button id="weatherToggle" class="head"><h2>Počasí</h2><span id="weatherMeta" class="small"></span></button>
+            <p id="weatherState" class="small state"></p>
+            <div id="weatherBody" class="body" hidden></div>
         </section>
 
         <section id="parkingCard" class="card">

@@ -21,10 +21,10 @@ const unnamed = 'Vlastní místo';
 // Sekce (karty) přehledu v pořadí, v jakém jsou na stránce. Ke každé patří funkce get<Sekce> v data.js,
 // v přehledu prvky <sekce>Card, <sekce>Toggle (záhlaví, které kartu sbaluje), <sekce>Meta, <sekce>State
 // a <sekce>Body, v nastavení štítek <sekce>Chip a dole v tomhle souboru funkce v renderers, která kartu poskládá.
-const sections = ['transit', 'vehicles', 'waste', 'alerts', 'cars', 'cycling', 'air', 'microclimate', 'parking', 'nearby'];
+const sections = ['transit', 'vehicles', 'waste', 'alerts', 'cars', 'cycling', 'air', 'weather', 'parking', 'nearby'];
 const loaders = {
     transit: getTransit, vehicles: getVehicles, waste: getWaste, alerts: getAlerts, cars: getCars,
-    cycling: getCycling, air: getAir, microclimate: getMicroclimate, parking: getParking, nearby: getNearby,
+    cycling: getCycling, air: getAir, weather: getWeather, parking: getParking, nearby: getNearby,
 };
 // Sekce, kde jde o minuty, se obnovují s odjezdy; ostatním stačí jednou za deset minut.
 const live = ['transit', 'vehicles'];
@@ -65,6 +65,7 @@ const state = {
     finding: false,       // běží hledání adresy
     found: null,          // naposledy nalezená adresa; Enter v poli s ní ukládá, místo aby hledal znovu
     collapsed: [],        // sbalené sekce: ukazují jen záhlaví a nenačítají se
+    opened: new Set(),    // odjezdy s rozbalenými podrobnostmi (klíče z data.js); obnovení karty je nesmí zavřít
     shows: {},            // sekce -> co má pod záhlavím: 'body' (data), jinak stavový text
     due: {},              // sekce -> kdy se má znovu načíst (chybí = hned, jak bude vidět)
     district: '',         // městská část, ve které místo leží
@@ -378,18 +379,30 @@ function colored(element, color) {
 }
 
 const renderers = {
-    transit: data => [
-        ...data.departures.map(item => {
-            const row = el('div', 'line two',
-                showRoute(item),
-                el('span', 'what grow', el('b', '', item.headsign), el('span', 'small', item.stop)),
-                el('span', 'when', colored(el('span', '', item.in), item.inColor),
-                    el('span', 'small', item.time, item.delay && el('span', 'accent', ` ${item.delay}`))));
-            row.style.opacity = item.opacity;
-            return row;
-        }),
-        ...data.infotexts.map(item => el('p', 'note', item.text)),
-    ],
+    transit: data => {
+        // Spoj, který už odjel, se mezi rozbalenými nedrží.
+        state.opened = new Set(data.departures.map(item => item.key).filter(key => state.opened.has(key)));
+        return [
+            ...data.departures.map(item => {
+                // Řádek je záhlaví prvku <details>: ťuknutí pod ním rozbalí, co se do řádku nevešlo.
+                const row = el('summary', 'line two',
+                    showRoute(item),
+                    el('span', 'what grow', el('b', '', item.headsign), el('span', 'small', item.stop)),
+                    el('span', 'when', colored(el('span', '', item.in), item.inColor),
+                        el('span', 'small', item.time, item.delay && el('span', 'accent', ` ${item.delay}`))));
+                const departure = el('details', 'departure', row,
+                    el('div', 'more small', ...item.detail.split('\n').map(line => el('span', '', line))));
+                departure.open = state.opened.has(item.key);
+                departure.ontoggle = () => {
+                    if (departure.open) state.opened.add(item.key);
+                    else state.opened.delete(item.key);
+                };
+                departure.style.opacity = item.opacity;
+                return departure;
+            }),
+            ...data.infotexts.map(item => el('p', 'note', item.text)),
+        ];
+    },
 
     vehicles: data => data.items.map(item => el('div', 'line',
         showRoute(item),
@@ -414,6 +427,7 @@ const renderers = {
             el('span', 'what grow', el('b', '', item.when), el('span', 'small', item.street)),
             el('span', 'small', item.distance))),
         data.bulkyNote && el('p', 'small', data.bulkyNote),
+        el('p', 'small', data.note),
     ],
 
     alerts: data => [
@@ -445,7 +459,7 @@ const renderers = {
         ];
     },
 
-    microclimate: data => [
+    weather: data => [
         el('div', 'values', ...data.values.map(item => el('div', 'what', el('span', 'small', item.name), el('b', '', item.value)))),
         data.updated && el('p', 'small', data.updated),
     ],

@@ -522,7 +522,7 @@
                             <ToggleButton x:Name="CarsChip" Style="{StaticResource Chip}" Content="Sdílená auta"/>
                             <ToggleButton x:Name="CyclingChip" Style="{StaticResource Chip}" Content="Cyklosčítač"/>
                             <ToggleButton x:Name="AirChip" Style="{StaticResource Chip}" Content="Ovzduší"/>
-                            <ToggleButton x:Name="MicroclimateChip" Style="{StaticResource Chip}" Content="Mikroklima"/>
+                            <ToggleButton x:Name="WeatherChip" Style="{StaticResource Chip}" Content="Počasí"/>
                             <ToggleButton x:Name="ParkingChip" Style="{StaticResource Chip}" Content="Parkování"/>
                             <ToggleButton x:Name="NearbyChip" Style="{StaticResource Chip}" Content="V okolí"/>
                         </WrapPanel>
@@ -678,7 +678,7 @@
                                     <ItemsControl ItemsSource="{Binding Departures}" Focusable="False">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Grid Margin="0,0,0,7" Opacity="{Binding Opacity}">
+                                                <Grid Margin="0,0,0,7" Opacity="{Binding Opacity}" ToolTip="{Binding Detail}" Background="Transparent">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="48"/>
                                                         <ColumnDefinition/>
@@ -838,6 +838,7 @@
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
                                     <TextBlock Text="{Binding BulkyNote}" Style="{StaticResource SmallOptional}" Margin="0,5,0,0"/>
+                                    <TextBlock Text="{Binding Note}" Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,8,0,0"/>
                                 </StackPanel>
                             </StackPanel>
                         </Border>
@@ -973,17 +974,17 @@
                             </StackPanel>
                         </Border>
 
-                        <Border x:Name="MicroclimateCard" Style="{StaticResource Card}">
+                        <Border x:Name="WeatherCard" Style="{StaticResource Card}">
                             <StackPanel>
-                                <ToggleButton x:Name="MicroclimateToggle" Style="{StaticResource CardHeader}" IsChecked="True" AutomationProperties.Name="Mikroklima">
+                                <ToggleButton x:Name="WeatherToggle" Style="{StaticResource CardHeader}" IsChecked="True" AutomationProperties.Name="Počasí">
                                     <DockPanel>
                                         <TextBlock Style="{StaticResource CardGlyph}" Text="&#xE706;"/>
-                                        <TextBlock Style="{StaticResource CardTitle}" Text="Mikroklima"/>
-                                        <TextBlock x:Name="MicroclimateMeta" Style="{StaticResource CardMeta}"/>
+                                        <TextBlock Style="{StaticResource CardTitle}" Text="Počasí"/>
+                                        <TextBlock x:Name="WeatherMeta" Style="{StaticResource CardMeta}"/>
                                     </DockPanel>
                                 </ToggleButton>
-                                <TextBlock x:Name="MicroclimateState" Style="{StaticResource CardState}"/>
-                                <StackPanel x:Name="MicroclimateBody" Visibility="Collapsed" Margin="0,4,0,0">
+                                <TextBlock x:Name="WeatherState" Style="{StaticResource CardState}"/>
+                                <StackPanel x:Name="WeatherBody" Visibility="Collapsed" Margin="0,4,0,0">
                                     <ItemsControl ItemsSource="{Binding Values}" Focusable="False" Margin="0,0,-14,0">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>

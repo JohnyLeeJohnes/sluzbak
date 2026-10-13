@@ -38,7 +38,7 @@ $counts = [ordered]@{
     Waste = { param($d) "$(@($d.Stations).Count) stanovišť, $(@($d.Bulky).Count) velkoobjemových" + $(if ($d.BulkyNote) { " ($($d.BulkyNote))" }) }
     Nearby = { param($d) "$(@($d.Items).Count) míst: " + (@($d.Items | ForEach-Object { "$($_.Kind) $($_.Distance)" }) -join ', ') }
     Air = { param($d) "$($d.Index), $(@($d.Components).Count) látek, $($d.Updated)" }
-    Microclimate = { param($d) "$(@($d.Values).Count) veličin, $($d.Updated)" }
+    Weather = { param($d) "$(@($d.Values).Count) veličin, $($d.Updated)" }
 }
 
 $failed = 0

@@ -85,6 +85,7 @@ CheckMatch 'velkoobjemové: kdy' $waste.Bulky[0].When '^(po|út|st|čt|pá|so|ne
 Check 'velkoobjemové: kde' $waste.Bulky[0].Street 'Budečská × Francouzská'
 Check 'velkoobjemové: bez poznámky' $waste.BulkyNote ''
 Check 'odpad: není prázdno' $waste.Empty ''
+Check 'odpad: proč v kartě není směsný' $waste.Note 'Směsný odpad Golemio neeviduje, jen tříděný.'
 
 '--- ovzduší'
 # Seznam stanic má v ukázce (stejně jako naživo) měsíce staré měření; platná čísla jsou v historii.
@@ -100,17 +101,18 @@ Check 'PM10 za den' $air.Components[3].Period 'průměr za 24 h'
 Check 'PM10 za den na jeden řádek' $air.Components[3].Detail 'částice PM10 · 24 h'
 CheckMatch 'čas měření' $air.Updated '^měřeno (dnes|zítra|\S+ \d+\. \d+\.) v \d{1,2}:\d\d$'
 
-'--- mikroklima'
-$micro = Get-Microclimate $demo $lat $lng
-CheckMatch 'senzor: nejbližší, který má data' $micro.Meta '^Náměstí Jiřího z Poděbrad · \d+ m$'
-Check 'veličiny: z každé jedna, v pořadí karty' (($micro.Values | ForEach-Object Name) -join ', ') 'Teplota, Vlhkost, Tlak, Vítr, Nárazy větru, Směr větru, Srážky, UV index'
-Check 'teplota: poslední měření, ze dvou metrů' ($micro.Values | Where-Object Name -eq 'Teplota').Value '14,2 °C'
-Check 'tlak v hektopascalech' ($micro.Values | Where-Object Name -eq 'Tlak').Value '1016 hPa'
-Check 'vítr zaokrouhlený' ($micro.Values | Where-Object Name -eq 'Vítr').Value '9,3 km/h'
-Check 'směr větru slovem' ($micro.Values | Where-Object Name -eq 'Směr větru').Value 'JZ'
-Check 'srážky: nula není prázdno' ($micro.Values | Where-Object Name -eq 'Srážky').Value '0 mm'
-Check 'veličina mimo seznam má jméno z číselníku' ($micro.Values | Where-Object Name -eq 'UV index').Value '2'
-CheckMatch 'mikroklima: čas' $micro.Updated '^měřeno v \d{1,2}:\d\d$'
+'--- počasí'
+# V ukázce senzor mikroklimatu měří, takže má přednost před teploměrem u cyklosčítače.
+$weather = Get-Weather $demo $lat $lng
+CheckMatch 'senzor: nejbližší, který má data' $weather.Meta '^Náměstí Jiřího z Poděbrad · \d+ m$'
+Check 'veličiny: z každé jedna, v pořadí karty' (($weather.Values | ForEach-Object Name) -join ', ') 'Teplota, Vlhkost, Tlak, Vítr, Nárazy větru, Směr větru, Srážky, UV index'
+Check 'teplota: poslední měření, ze dvou metrů' ($weather.Values | Where-Object Name -eq 'Teplota').Value '14,2 °C'
+Check 'tlak v hektopascalech' ($weather.Values | Where-Object Name -eq 'Tlak').Value '1016 hPa'
+Check 'vítr zaokrouhlený' ($weather.Values | Where-Object Name -eq 'Vítr').Value '9,3 km/h'
+Check 'směr větru slovem' ($weather.Values | Where-Object Name -eq 'Směr větru').Value 'JZ'
+Check 'srážky: nula není prázdno' ($weather.Values | Where-Object Name -eq 'Srážky').Value '0 mm'
+Check 'veličina mimo seznam má jméno z číselníku' ($weather.Values | Where-Object Name -eq 'UV index').Value '2'
+CheckMatch 'počasí: čas' $weather.Updated '^měřeno v \d{1,2}:\d\d$'
 
 '--- parkování'
 $parking = Get-Parking $demo $lat $lng
@@ -145,6 +147,13 @@ Check 'autobus bez sledování nemá zpoždění' "$($transit.Departures[3].Rout
 $canceled = $transit.Departures[4]
 Check 'zrušený spoj' "$($canceled.In) $($canceled.InColor) $($canceled.Opacity.ToString([Globalization.CultureInfo]::InvariantCulture))" 'zrušeno #FF8A80 0.55'
 Check 'zastávka mimo seznam nástupišť' $transit.Departures[6].Stop 'Šumavská · A'
+# Podrobnosti do bubliny: plánovaný čas, zpoždění, kde vůz je, a co API o voze ví.
+$clock = 'Podle jízdního řádu v \d{1,2}:\d\d'
+CheckMatch 'podrobnosti: tramvaj se zpožděním' $tram.Detail "^$clock\nZpoždění 2 min\nNaposledy v zastávce Jana Masaryka\nBezbariérový spoj\nS klimatizací$"
+CheckMatch 'podrobnosti: metro načas' $first.Detail "^$clock\nJede načas\nBezbariérový spoj\nBez klimatizace$"
+CheckMatch 'podrobnosti: bez sledování a bez údaje o klimatizaci' $transit.Departures[3].Detail "^$clock\nZpoždění není známé\nBezbariérový spoj$"
+CheckMatch 'podrobnosti: zrušený spoj' $canceled.Detail "^Spoj je zrušený\n$clock\nSpoj není bezbariérový\nBez klimatizace$"
+Check 'klíč řádku: spoj a zastávka' $tram.Key '22_1|U476Z1P'
 Check 'infotext' $transit.Infotexts.Count 1
 Check 'zastávky se vrací pro příští obnovení' $transit.Stops.Count 5
 $nowhere = Get-Transit $demo 49.0 13.0 $null
@@ -399,13 +408,25 @@ try {
     # Body mikroklimatu jako jeden objekt místo seznamu.
     [IO.File]::WriteAllText("$quirks\v2-microclimate-points.json",
         '{"point_id": 207, "location_id": 200, "point_name": "Jediný bod", "lat": 50.0779, "lng": 14.45, "measures": []}', $utf8)
-    $single = Get-Microclimate $alt $lat $lng
+    $single = Get-Weather $alt $lat $lng
     CheckMatch 'jeden bod místo seznamu' $single.Meta '^Jediný bod · \d+ m$'
     Check 'bez číselníku veličin zůstane kód' ($single.Values | Where-Object Name -eq 'uv_index').Value '2'
 
-    # Když za poslední hodiny neměřil žádný senzor (naživo od dubna 2026), karta to řekne rovnou.
+    # Když za poslední hodiny neměřil žádný senzor (naživo od dubna 2026), zbývá teplota od cyklosčítače.
+    # Nejbližší sčítač (Vinohradská) teploměr nemá, vezme se až ten další.
     [IO.File]::WriteAllText("$quirks\v2-microclimate-measurements.json", '[]', $utf8)
-    Check 'mikroklima bez měření' (Get-Microclimate $alt $lat $lng).Empty 'Golemio teď nemá čerstvá data z žádného senzoru mikroklimatu.'
+    $counter = Get-Weather $alt $lat $lng
+    Check 'senzory mlčí: teploměr u cyklosčítače' $counter.Meta 'cyklosčítač Podolské nábřeží · 2,5 km'
+    Check 'teplota: poslední z řádků' (($counter.Values | ForEach-Object { "$($_.Name) $($_.Value)" }) -join ', ') 'Teplota 14 °C'
+    CheckMatch 'teplota: čas' $counter.Updated '^měřeno v \d{1,2}:\d\d$'
+
+    # Chyba senzorů teplotu neschová.
+    Remove-Item "$quirks\v2-microclimate-points.json"
+    Check 'senzory selžou: teplota zůstane' (Get-Weather $alt $lat $lng).Values[0].Value '14 °C'
+
+    # Hodinu a půl stará teplota už o počasí venku nic neříká.
+    [IO.File]::WriteAllText("$quirks\v2-bicyclecounters-temperatures.json", '[{"id": "camea-BC_PN-VYBR", "value": 9, "measured_to": "{{now-90}}"}]', $utf8)
+    Check 'stará teplota se neukáže' (Get-Weather $alt $lat $lng).Empty 'Golemio teď z okolí nemá čerstvé měření ze senzoru mikroklimatu ani z teploměru u cyklosčítače.'
 
     # Kam spoj jede, je v samostatném dotazu; když selže, vozidlo se ukáže bez cíle.
     Remove-Item "$quirks\v2-public-gtfs-trips-22_1840_260901.json"

@@ -123,7 +123,8 @@ main {
 
 .top { display: flex; align-items: center; gap: 8px; }
 .place { flex: 1; display: grid; min-width: 0; }
-.place span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Jméno místa se zalomí celé: oříznuté by na úzkém displeji neřeklo, kde přehled je. */
+.place span { overflow-wrap: anywhere; }
 #placeText { font-size: 18px; font-weight: 600; }
 
 .strip { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 22px; margin-top: -6px; }
@@ -154,12 +155,13 @@ main {
     width: calc(100% + 16px);
     min-height: 46px;
     margin: 0 -8px;
-    padding: 0 8px;
+    padding: 6px 8px;
     border-radius: 10px;
     text-align: left;
 }
 .head h2 { flex: none; }
-.head .small { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+/* Údaj v záhlaví (zastávky, stanice) se zalomí celý. Oříznutý končil na telefonu třemi tečkami za okrajem. */
+.head .small { flex: 1; min-width: 0; overflow-wrap: anywhere; text-align: right; }
 /* Šipka: nahoru = karta je rozbalená */
 .head::after {
     content: '';
@@ -202,6 +204,23 @@ main {
 .when { display: grid; justify-items: end; font-weight: 600; }
 .when .small { font-weight: 400; }
 
+/* Odjezd: řádek je záhlaví prvku <details>, ťuknutí pod ním rozbalí podrobnosti o spoji. */
+.departure summary { list-style: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.departure summary::-webkit-details-marker { display: none; }
+/* Šipka jako u záhlaví karet: nahoru = rozbaleno */
+.departure summary::after {
+    content: '';
+    width: 6px;
+    height: 6px;
+    margin-left: 2px;
+    border: solid var(--muted);
+    border-width: 0 1.5px 1.5px 0;
+    transform: translateY(-2px) rotate(45deg);
+}
+.departure[open] summary::after { transform: translateY(2px) rotate(225deg); }
+/* Podrobnosti začínají pod názvem cíle, ne pod číslem linky. */
+.more { display: grid; gap: 2px; padding: 6px 0 4px 54px; }
+
 /* Poznámka pod odjezdy (výluka na zastávce) */
 .note { padding: 8px 10px; border-radius: 8px; background: var(--well); font-size: 13px; }
 
@@ -216,7 +235,7 @@ main {
 .index { padding: 4px 12px; border-radius: 8px; font-weight: 600; }
 .formula { width: 52px; font-weight: 600; }
 
-/* Mikroklima: veličiny ve dvou sloupcích, hodnota pod názvem */
+/* Počasí: veličiny ve dvou sloupcích, hodnota pod názvem */
 .values { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
 
 /* V okolí: dlouhý název se zalomí, zkrácený by nic neřekl. */

@@ -1,0 +1,5 @@
+[
+  {"id": "camea-BC_PN-VYBR", "value": 13, "measured_from": "{{now-20}}", "measured_to": "{{now-15}}", "measurement_count": "1"},
+  {"id": "camea-BC_PN-VYBR", "value": 14, "measured_from": "{{now-10}}", "measured_to": "{{now-5}}", "measurement_count": "1"},
+  {"id": "camea-BC_PN-VYBR", "value": 13, "measured_from": "{{now-15}}", "measured_to": "{{now-10}}", "measurement_count": "1"}
+]

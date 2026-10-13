@@ -442,6 +442,8 @@ async function getWaste(context, latitude, longitude) {
         showBulky: bulkyAllowed,
         bulky,
         bulkyNote: bulkyError || (bulkyAllowed && !bulky.length ? 'V okolí teď žádný není v plánu.' : ''),
+        // Na směsný odpad se lidé ptají; ať je z karty vidět, že nechybí omylem.
+        note: 'Směsný odpad Golemio neeviduje, jen tříděný.',
         empty: nests.length ? '' : `Do ${formatDistance(range)} žádné stanoviště tříděného odpadu není.`,
     };
 }
@@ -541,7 +543,9 @@ async function getAir(context, latitude, longitude) {
     };
 }
 
-// ---- Mikroklima ----
+// ---- Počasí ----
+// Předpověď ani srážky nad městem Golemio nemá. Co se venku děje, měří městské senzory mikroklimatu (teplota,
+// vlhkost, tlak, vítr, srážky). Když mlčí, zbývá teplota vzduchu, kterou hlásí teploměry u cyklosčítačů.
 
 // Veličiny v pořadí, v jakém je karta ukazuje. Kód z API má za názvem výšku čidla v cm (air_temp200).
 const microclimateMeasures = {
@@ -558,11 +562,12 @@ function formatMeasure(base, value, unit) {
     return [formatNumber(value), unit].filter(Boolean).join(' ');
 }
 
+// Měření z nejbližšího senzoru mikroklimatu, který v posledních dvou hodinách něco hlásil. Nic, když žádný takový není.
 async function getMicroclimate(context, latitude, longitude) {
     // Specifikace tu popisuje jeden objekt, i když jde o seznam; list() srovná obojí.
     const points = list(await getCached(context, '/v2/microclimate/points'))
         .filter(point => point && point.lat != null && point.lng != null && point.point_id != null);
-    if (!points.length) return { meta: '', empty: 'Golemio nevrátilo žádný senzor mikroklimatu.' };
+    if (!points.length) return null;
 
     // Jeden dotaz na všechny senzory: nejbližší často mlčí a zkoušet je po jednom by stálo dotaz za každý.
     const rows = list(await invokeApi(context, '/v2/microclimate/measurements', { from: formatUtc(getHoursAgo(microclimateHours)) }))
@@ -570,7 +575,7 @@ async function getMicroclimate(context, latitude, longitude) {
     const measured = Map.groupBy(rows, row => String(row.point_id));
     const distanceTo = point => getDistance(latitude, longitude, Number(point.lat), Number(point.lng));
     const point = points.filter(candidate => measured.has(String(candidate.point_id))).sort((a, b) => distanceTo(a) - distanceTo(b))[0];
-    if (!point) return { meta: '', empty: 'Golemio teď nemá čerstvá data z žádného senzoru mikroklimatu.' };
+    if (!point) return null;
 
     let latest = null;
     const order = Object.keys(microclimateMeasures);
@@ -599,6 +604,53 @@ async function getMicroclimate(context, latitude, longitude) {
         updated: latest ? `měřeno v ${formatClock(latest)}` : '',
         empty: '',
     };
+}
+
+// Kolik nejbližších cyklosčítačů se čte. Karta Cyklosčítač z nich bere tři; teploměr má jen část, proto jich je víc.
+// Obě karty se ptají stejně, takže seznam stačí stáhnout jednou.
+const counterLimit = 8;
+// Teplota z teploměru dál než tolik metrů nebo starší než tolik minut už o počasí tady a teď nic neříká.
+const temperatureRange = 10000;
+const temperatureMinutes = 60;
+
+// Teplota vzduchu z nejbližšího cyklosčítače, který ji měří. Nic, když žádný takový v dosahu není.
+async function getCounterTemperature(context, latitude, longitude) {
+    const counters = await invokeApi(context, '/v2/bicyclecounters', { latlng: formatLatLng(latitude, longitude), limit: counterLimit });
+    const near = getFeatures(counters, latitude, longitude).filter(counter => counter.distance <= temperatureRange && counter.properties.id).sort(byDistance);
+    if (!near.length) return null;
+
+    // Teploměry hlásí po pěti minutách; od každého stačí poslední řádek.
+    const now = new Date();
+    const latest = new Map();
+    for (const row of list(await invokeApi(context, '/v2/bicyclecounters/temperatures', {
+        'id[]': near.map(counter => String(counter.properties.id)), from: formatUtc(getHoursAgo(1)),
+    }))) {
+        if (row?.value == null) continue;
+        const time = convertToPragueTime(row.measured_to);
+        if (!time || (now - time) / 60000 > temperatureMinutes) continue;
+        const id = String(row.id);
+        if (!(latest.get(id)?.time >= time)) latest.set(id, { time, value: row.value });
+    }
+    const counter = near.find(candidate => latest.has(String(candidate.properties.id)));
+    if (!counter) return null;
+
+    const reading = latest.get(String(counter.properties.id));
+    return {
+        meta: `cyklosčítač ${counter.properties.name} · ${formatDistance(counter.distance)}`,
+        values: [{ name: 'Teplota', value: `${formatNumber(reading.value)} °C` }],
+        updated: `měřeno v ${formatClock(reading.time)}`,
+        empty: '',
+    };
+}
+
+async function getWeather(context, latitude, longitude) {
+    // Senzor mikroklimatu měří víc veličin, proto má přednost. Jeho chyba ale nesmí schovat teplotu ze sčítače:
+    // od dubna 2026 senzory mlčí a kdoví, co s nimi Golemio udělá.
+    let sensor = null;
+    try { sensor = await getMicroclimate(context, latitude, longitude); }
+    catch { }
+    return sensor ?? await getCounterTemperature(context, latitude, longitude) ??
+        { meta: '', empty: 'Golemio teď z okolí nemá čerstvé měření ze senzoru mikroklimatu ani z teploměru u cyklosčítače.' };
 }
 
 // ---- Parkování ----
@@ -741,14 +793,35 @@ async function getTransit(context, latitude, longitude, stops) {
         if (!time) return null;
 
         const minutes = Math.floor((time - now) / 60000);
-        const delay = departure.delay?.is_available && departure.delay.seconds != null ? round(Number(departure.delay.seconds) / 60) : 0;
+        // Zpoždění zná API jen u vozu, který hlásí polohu.
+        const tracked = Boolean(departure.delay?.is_available) && departure.delay.seconds != null;
+        const delay = tracked ? round(Number(departure.delay.seconds) / 60) : 0;
         const stop = names.get(String(departure.stop?.id));
         const platform = [departure.stop?.platform_code, stop?.platform].find(Boolean);
         const route = String(departure.route?.short_name ?? '');
         const color = getRouteColor(convertToInt(departure.route?.type), route);
         const canceled = Boolean(departure.trip?.is_canceled);
 
+        // Co se do řádku nevejde: na počítači je to v bublině, v telefonu po ťuknutí na řádek.
+        // Bezbariérovost a klimatizaci API u některých spojů neví (null); pak se o nich mlčí.
+        const accessible = departure.trip?.is_wheelchair_accessible;
+        const cooled = departure.trip?.is_air_conditioned;
+        const detail = [
+            canceled && 'Spoj je zrušený',
+            scheduled && `Podle jízdního řádu v ${formatClock(scheduled)}`,
+            !canceled && (!tracked ? 'Zpoždění není známé' : delay >= 1 ? `Zpoždění ${delay} min` : delay <= -1 ? `Napřed o ${-delay} min` : 'Jede načas'),
+            departure.last_stop?.name && `Naposledy v zastávce ${departure.last_stop.name}`,
+            accessible != null && (accessible ? 'Bezbariérový spoj' : 'Spoj není bezbariérový'),
+            cooled != null && (cooled ? 'S klimatizací' : 'Bez klimatizace'),
+            departure.route?.is_night && 'Noční linka',
+            departure.route?.is_regional && 'Příměstská linka',
+            departure.route?.is_substitute_transport && 'Náhradní doprava',
+            departure.trip?.short_name && `Vlak ${departure.trip.short_name}`,
+        ].filter(Boolean).join('\n');
+
         return {
+            // Podle klíče stránka pozná tentýž řádek i po obnovení a nechá ho rozbalený.
+            key: `${departure.trip?.id ?? ''}|${departure.stop?.id ?? ''}`,
             route,
             color,
             routeTextColor: getRouteTextColor(color),
@@ -758,6 +831,7 @@ async function getTransit(context, latitude, longitude, stops) {
             inColor: canceled ? '#FF8A80' : '#ECEEF4',
             time: formatClock(time),
             delay: delay >= 1 && !canceled ? `+${delay} min` : '',
+            detail,
             opacity: canceled ? 0.55 : 1,
         };
     }).filter(Boolean);
@@ -877,7 +951,7 @@ async function getCars(context, latitude, longitude) {
 // ---- Cyklosčítače ----
 
 async function getCycling(context, latitude, longitude) {
-    const counters = await invokeApi(context, '/v2/bicyclecounters', { latlng: formatLatLng(latitude, longitude), limit: 3 });
+    const counters = await invokeApi(context, '/v2/bicyclecounters', { latlng: formatLatLng(latitude, longitude), limit: counterLimit });
     const near = getFeatures(counters, latitude, longitude).sort(byDistance).slice(0, 3);
     if (!near.length) return { meta: '', empty: 'Golemio nevrátilo žádný cyklosčítač.' };
 
@@ -1105,7 +1179,7 @@ if (typeof module === 'object') {
         defaultOptions, rateLimit, rateWindow, cacheSlow, cacheLive, cacheStatic, wasteColors,
         getOption, round, convertToApiError, formatQuery, formatLatLng, invokeHttp, waitRateLimit, testRateRoom, invokeApi, getCached,
         formatCompass, getDistance, formatDistance, getBoundingBox, readPosition, getPragueDay, convertToPragueTime, convertToDay,
-        formatDay, formatClock, formatNumber, formatFormula, getWaste, getAir, getMicroclimate, getParking, findStops, getTransit,
+        formatDay, formatClock, formatNumber, formatFormula, getWaste, getAir, getWeather, getParking, findStops, getTransit,
         getVehicles, getAlerts, getCars, getCycling, testInRing, getDistrict, getOpenStatus, getNearby, testToken, findAddress, formatPlace,
     };
 }

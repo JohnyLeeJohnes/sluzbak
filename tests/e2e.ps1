@@ -73,7 +73,7 @@ function Check($what, $actual, $expected) {
 }
 
 # Sekce přehledu ve stejném pořadí jako ve Sluzbak.ps1.
-$sections = 'Transit', 'Vehicles', 'Waste', 'Alerts', 'Cars', 'Cycling', 'Air', 'Microclimate', 'Parking', 'Nearby'
+$sections = 'Transit', 'Vehicles', 'Waste', 'Alerts', 'Cars', 'Cycling', 'Air', 'Weather', 'Parking', 'Nearby'
 $needPlace = 'Najdi adresu, nebo vyplň souřadnice (třeba 50,0753 a 14,4379).'
 $null = New-Item -ItemType Directory -Force $temp
 $p = $null
@@ -165,8 +165,8 @@ try {
     Check 'rozbalení se uložilo' (Collapsed) ''
     Check 'ovzduší: index' (WaitFor { Named 'Přijatelná' }) $true
     Check 'ovzduší: stanice' (Text AirMeta) 'Praha 2-Legerova · 620 m'
-    Check 'mikroklima: hodnota' (WaitFor { Named '14,2 °C' }) $true
-    Check 'mikroklima: senzor, který měří' ((Text MicroclimateMeta) -match '^Náměstí Jiřího z Poděbrad · ') $true
+    Check 'počasí: hodnota' (WaitFor { Named '14,2 °C' }) $true
+    Check 'počasí: senzor, který měří' ((Text WeatherMeta) -match '^Náměstí Jiřího z Poděbrad · ') $true
     Check 'v okolí: nejbližší lékárna' (WaitFor { Named 'Lékárna U Ludmily' }) $true
     Check 'v okolí: otevírací doba' (Named 'otevřeno nonstop') $true
     Check 'v okolí: sběrný dvůr' (Named 'Sběrný dvůr Perucká') $true
@@ -206,7 +206,7 @@ try {
     Check 'užší okruh: jen bližší zastávky' (WaitFor { (Text TransitMeta) -eq 'Náměstí Míru' }) $true
     Check 'čtyři odjezdy: čtvrtý je vidět' (WaitFor { Named 'Chodov' }) $true
     Check 'čtyři odjezdy: pátý už ne' (Named 'Sídliště Řepy') $false
-    Check 'vypnuté karty zmizely, ostatní zůstaly' "$(Shown ParkingToggle) $(Shown WasteToggle) $(Shown CarsMeta) $(Shown VehiclesMeta) $(Shown MicroclimateMeta)" 'False False True True True'
+    Check 'vypnuté karty zmizely, ostatní zůstaly' "$(Shown ParkingToggle) $(Shown WasteToggle) $(Shown CarsMeta) $(Shown VehiclesMeta) $(Shown WeatherMeta)" 'False False True True True'
     Check 'ostatní karty se načtou' (WaitFor { Named '14,2 °C' }) $true
     Check 'sbalené karty zůstaly sbalené i po uložení' "$(Toggled AirToggle) $(Toggled NearbyToggle) $(Shown AirMeta) $(Named 'Lékárna U Ludmily')" 'Off Off False False'
     $options = ([IO.File]::ReadAllText($settings, [Text.Encoding]::UTF8) | ConvertFrom-Json).options

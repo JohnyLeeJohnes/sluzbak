@@ -145,9 +145,11 @@ tests/, tools/
 - Golemio API:
   - hlavička `X-Access-Token`, nejvýš 10 000 řádků na požadavek;
   - limit 20 požadavků za 8 s na klíč: `Wait-RateLimit` jich pustí 18 a s dalším počká, nepovinné dotazy
-    smí jen do 12. Odmítnutí 429 se po okně limitu jednou zopakuje. Naživo: první načtení všech karet
-    34 dotazů (horní karty 14, `$background` 14, městská část 1, až 8 cílů spojů), opakované do 10 minut
-    0 až 3. Nová karta nahoře = přepočítat, že se horní karty do 18 vejdou;
+    smí jen do 12. Odmítnutí 429 se po okně limitu jednou zopakuje. Naživo 5. 10. 2026: první načtení všech
+    karet 34 dotazů (horní karty 14, `$background` 14, městská část 1, až 8 cílů spojů), opakované do 10 minut
+    0 až 3. Od 0.8.0 má Počasí při mlčících senzorech dva dotazy navíc (seznam sčítačů, teploty) a Cyklosčítač
+    ten seznam bere z paměti: horní karty 16, `$background` 13 (spočítáno, naživo neměřeno). Nová karta nahoře
+    = přepočítat, že se horní karty do 18 vejdou;
   - první dotaz na některé endpointy trvá i přes 30 s (stanice ovzduší, cyklosčítače): `Invoke-Http` proto
     každý neúspěch jednou zopakuje;
   - endpointy míst (`/v2/medicalinstitutions` a podobné) podle `latlng` jen řadí, vzdálenost omezuje `range`;
@@ -158,6 +160,13 @@ tests/, tools/
     všechny stanice). Starší než `$airFreshHours` se jako aktuální neukazuje;
   - mikroklima: od 7. 4. 2026 nehlásí žádný senzor; `/v2/microclimate/measurements?from=` bez `pointId`
     vrátí všechny body naráz. Tlak chodí v Pa, veličiny mají v názvu výšku čidla (`air_temp200`);
+  - počasí Golemio nemá (ve specifikaci 13. 10. 2026 žádná předpověď, srážky ani meteostanice). Karta Počasí
+    proto bere mikroklima a při jeho mlčení teplotu z `/v2/bicyclecounters/temperatures`: řádek po pěti
+    minutách, celé °C, `id` je id sčítače. Teploměr má jen část sčítačů (13. 10. 2026 Chodov ne, Krč ano),
+    proto se čte osm nejbližších (`$counterLimit`, sdílí ho karta Cyklosčítač);
+  - `/v2/pid/departureboards` posílá u spoje i `last_stop` (odkud se vůz naposledy hlásil), bezbariérovost,
+    klimatizaci (může být `null`) a příznaky linky; jsou v `Detail` odjezdu. Tentýž spoj přijde zvlášť pro
+    každé nástupiště v okolí (13. 10. 2026 bylo v 60 řádcích 29 spojů); slučovat je uživatel nechtěl;
   - polohy vozidel nemají cíl spoje (bere se z `/v2/public/gtfs/trips/{id}` přes `Get-Cached`), stejný
     infotext chodí zvlášť pro každou zastávku, vadný cyklosčítač hlásí celý den nuly;
   - **403 pro běžný klíč** (5. 10. 2026): `/v1/bulky-waste/stations`, `/v2/sharedbikes`, `/v2/vehiclesharing`,
@@ -198,10 +207,10 @@ tests/, tools/
 ## Stav a budoucnost
 
 - Hotovo: nastavení (klíč, místo, volby), přehled na jedné stránce se sbalovacími kartami (Odjezdy, Právě
-  jede kolem, Svoz odpadu, Výluky, Sdílená auta, Cyklosčítač, Ovzduší, Mikroklima, Parkování, V okolí),
+  jede kolem, Svoz odpadu, Výluky, Sdílená auta, Cyklosčítač, Ovzduší, Počasí, Parkování, V okolí),
   městská část v záhlaví, ukázkový režim, paměť odpovědí a hlídání limitu API.
 - **Ověřeno naživo** klíčem uživatele 5. 10. 2026 (`tests/live.ps1`, všech deset karet). Neověřené zůstává, co
-  API nevrátilo: velkoobjemové kontejnery (403) a karta Mikroklima s daty (senzory mlčí).
+  API nevrátilo: velkoobjemové kontejnery (403) a karta Počasí (do 0.7.0 Mikroklima) s daty ze senzorů, které mlčí.
 - Kde se živé API liší od specifikace, bere kód obě varianty: `AQ_hourly_index` (naživo kód „1A“, ne číslo),
   `/v2/microclimate/points` (naživo pole s `point_name`), pozice zabalená do pole navíc. Číselníky ovzduší
   v `demo/` jsou opsané z živého API.
