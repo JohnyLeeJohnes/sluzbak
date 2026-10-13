@@ -3,6 +3,14 @@
 Všechny podstatné změny v projektu. Formát vychází z [Keep a Changelog](https://keepachangelog.com/cs/1.1.0/),
 verze se řídí [sémantickým verzováním](https://semver.org/lang/cs/).
 
+## [0.7.0] - 2026-10-13
+
+### Přidáno
+
+- Mobilní verze ve složce `mobile/`: tentýž Službák pro telefon, nastavení i všech deset karet. Běží
+  v aplikaci [Bránocesta pro Android](https://github.com/JohnyLeeJohnes/branocesta#v-telefonu). Data čte stejně
+  jako na počítači a stejně šetří limit API; zastávky kolem místa si navíc týden pamatuje.
+
 ## [0.6.0] - 2026-10-07
 
 ### Přidáno
@@ -163,6 +171,7 @@ První vydání. Číslo začíná nulou, protože aplikace ještě neběžela s
 - Aplikace zatím neběžela proti skutečným datům z Golemia, jen proti ukázkovým odpovědím sestaveným podle
   specifikace API.
 
+[0.7.0]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.7.0
 [0.6.0]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.6.0
 [0.5.0]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.5.0
 [0.4.1]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.4.1

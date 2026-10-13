@@ -144,6 +144,22 @@ v přehledu.
 - **Proč skript, a ne `.exe`.** Nepodepsaný `.exe` umí Windows 11 (Smart App Control) zablokovat. Skript
   běží bez podpisu a před spuštěním si ho můžeš celý přečíst.
 
+## V telefonu
+
+Ve složce `mobile/` je tentýž Službák pro telefon: nastavení i všech deset karet, jen pod sebou. Běží
+v aplikaci [Bránocesta pro Android](https://github.com/JohnyLeeJohnes/branocesta#v-telefonu), která ho má
+přibalený spolu s Měšcem. Jak ji sestavit a dostat do telefonu, je v jejím README.
+
+- **Data čte stejně jako na počítači:** stejné dotazy, stejné šetření limitu, stejné hlášky. Na Golemio se
+  ptá přímo telefon, žádný server mezi nimi není.
+- **Klíč je v telefonu nešifrovaný.** Nastavení leží v úložišti aplikace a ochrana Windows (DPAPI) tam není.
+  Zastupuje ji zámek telefonu a to, že Android do úložiště aplikace nepustí jiné aplikace ani zálohu do
+  cloudu. Po odinstalování aplikace zadáš klíč znovu.
+- **Zastávky kolem tebe si pamatuje týden.** Jejich hledání znamená stáhnout celý seznam zastávek PID
+  a telefon zavírá aplikace častěji než počítač. Ostatní odpovědi si pamatuje jen za běhu, jako na počítači.
+- **Odložená aplikace se neptá.** Obnovuje se, jen když je vidět; po návratu načte, co mezitím zestárlo.
+- **Bez klíče** jde zkusit tlačítkem **Zkusit s ukázkovými daty** na první obrazovce.
+
 ## Úpravy
 
 | Soubor | Obsah |
@@ -153,8 +169,12 @@ v přehledu.
 | `Golemio.ps1` | Čtení dat z Golemio API a hledání adres. Bez okna, dá se zkoušet samostatně. |
 | `demo/` | Ukázkové odpovědi API pro náměstí Míru. |
 | `Sluzbak.cmd`, `install.cmd` | Spuštění bez instalace a vytvoření zástupců. |
-| `tools/make-icon.ps1` | Vygeneruje ikonu do `assets/`. |
+| `tools/make-icon.ps1` | Vygeneruje ikonu do `assets/` a ikonu mobilní verze do `mobile/`. |
 | `tools/make-release.ps1` | Sestaví ZIP pro stránku Releases do `dist/`. |
+| `mobile/index.html`, `mobile/style.css` | Mobilní verze: obrazovky a vzhled. |
+| `mobile/app.js` | Mobilní verze: obsluha stránky, přepis `Sluzbak.ps1`. |
+| `mobile/data.js` | Mobilní verze: čtení dat, přepis `Golemio.ps1` se stejnými jmény funkcí. |
+| `tests/mobile.js` | Zkouška `mobile/data.js`: nad ukázkovými odpověďmi musí vrátit totéž co `Golemio.ps1`. |
 | `tests/unit.ps1` | Testy čtení dat nad ukázkovými odpověďmi. |
 | `tests/e2e.ps1` | Test, který aplikaci prokliká přes UI Automation. |
 | `tests/keys.ps1` | Test klávesnice v nastavení (Enter, šipky, kliknutí na nalezenou adresu), pořadí načítání a sbalování karet. |
@@ -179,6 +199,16 @@ powershell -ExecutionPolicy Bypass -File tests/keys.ps1
 
 Žádný z nich nevolá síť a nepotřebuje klíč. Druhý a třetí během běhu otevřou okno aplikace a pracují
 s nastavením v dočasné složce, takže na to tvoje nesáhnou.
+
+Mobilní verze má vlastní test datové vrstvy. Potřebuje [Node.js](https://nodejs.org); aplikace sama ne.
+
+```
+node tests/mobile.js
+```
+
+Nad ukázkovými odpověďmi pustí `Golemio.ps1` i `mobile/data.js` a porovná, co vrátily. Stránku samotnou
+neprochází. Tu si na počítači otevřeš v prohlížeči (`mobile/index.html`). Ukázka `mobile/index.html#demo`
+potřebuje místní server nad složkou repozitáře, protože ukázková data čte přes HTTP.
 
 Se skutečným klíčem jde všechno projít naráz. Skript si klíč a místo vezme z nastavení aplikace, takže ji
 nejdřív jednou spusť a nastav:
@@ -213,4 +243,6 @@ alerts, parking, shared cars, a bicycle counter, waste collection days, nearby a
 microclimate sensors. It is a PowerShell script with a WPF window: download
 [Sluzbak.zip](https://github.com/JohnyLeeJohnes/sluzbak/releases/latest/download/Sluzbak.zip) (always the
 latest version), unblock and extract it, and run `install.cmd` to get a shortcut. Nothing to compile or
-install. Nothing is stored except your settings. The interface is in Czech.
+install. Nothing is stored except your settings. The interface is in Czech. The `mobile/` folder holds the
+same dashboard for phones: a page bundled into the
+[Bránocesta Android app](https://github.com/JohnyLeeJohnes/branocesta), calling Golemio straight from the device.
