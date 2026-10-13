@@ -110,3 +110,7 @@ $w.Flush()
 [System.IO.File]::WriteAllBytes((Join-Path $assets 'sluzbak.ico'), $ico.ToArray())
 [System.IO.File]::WriteAllBytes((Join-Path $assets 'sluzbak.png'), (Png $bitmaps[0]))
 "OK: assets/sluzbak.ico ($($sizes -join ', ') px), assets/sluzbak.png"
+
+# Ikona mobilní verze: má ji stránka a v Bránocestě pro Android karta aplikace.
+[System.IO.File]::WriteAllBytes((Join-Path $PSScriptRoot '..\mobile\icon-192.png'), (Png (Draw 192)))
+"OK: mobile/icon-192.png"

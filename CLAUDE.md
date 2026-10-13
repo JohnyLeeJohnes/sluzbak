@@ -86,6 +86,9 @@ powershell -ExecutionPolicy Bypass -File tests/keys.ps1
 - Všechny tři mají nastavení v dočasné složce, vracejí počet chyb a **nevolají síť**. Coverage se neměří.
 - `tests/live.ps1` – zkouška naživo klíčem a místem z uloženého nastavení: co která karta dostala, u chyb
   zpracování i místo v kódu. Klíč nevypisuje.
+- `node tests/mobile.js` – mobilní datová vrstva (`mobile/data.js`): nad `demo/` pustí i `Golemio.ps1`
+  a porovná výsledky sekci po sekci, k tomu přepis kontrol formátování, limitu a paměti z `unit.ps1`.
+  Stránku samotnou nezkouší. Potřebuje Node.js; aplikace ne.
 
 ## Struktura
 
@@ -94,6 +97,8 @@ Sluzbak.ps1    okno: stav, nastavení na disku, úlohy na pozadí, obsluhy udál
 Sluzbak.xaml   vzhled: paleta, styly, obrazovka nastavení a karty přehledu
 Golemio.ps1       datová vrstva: HTTP, JSON, poloha a čas, jedna funkce na sekci, Find-Address, Test-Token
 demo/             ukázkové odpovědi API (náměstí Míru), jméno souboru = cesta endpointu s pomlčkami
+mobile/           mobilní verze: data.js = přepis Golemio.ps1, app.js = přepis Sluzbak.ps1 (stejná jména funkcí,
+                  jen camelCase), index.html a style.css = obrazovky a vzhled
 assets/           ikona (generuje tools/make-icon.ps1)
 docs/             obrázky do README (generuje -Screenshot)
 tests/, tools/
@@ -110,6 +115,11 @@ tests/, tools/
   den předtím měl zůstat soukromý), takže Release i odkaz na nejnovější ZIP stáhne kdokoli bez přihlášení.
   Licence je MIT.
 - **Klíč nikdy do repozitáře.** Nastavení je v `%APPDATA%\Sluzbak\settings.json`, klíč šifrovaný DPAPI.
+- **Mobilní verze** (`mobile/`) je stránka přibalená do aplikace Bránocesta pro Android; sestavuje ji
+  `tools/make-apk.ps1` v repozitáři `branocesta`, kde je i popis, co stránce aplikace dává. Nikde se
+  nehostuje (rozhodnutí uživatele 9. 10. 2026: má běžet v telefonu, ne z GitHub Pages), proto nemá service
+  worker ani manifest. Nastavení má v `localStorage`, klíč v něm nešifrovaný. Co se změní v `Golemio.ps1`
+  nebo `Sluzbak.ps1`, patří i do `mobile/data.js` a `mobile/app.js`; rozdíl v datech pozná `tests/mobile.js`.
   Uživatel zmínil i „temp“; zůstává AppData, protože `%TEMP%` Windows při úklidu maže.
 - Soubor s nastavením: `token`, `place`, `latitude`, `longitude`, `options` (`stopsRange`, `wasteRange`,
   `parkingRange`, `departures`, `refresh`, `hidden` = vypnuté sekce, `collapsed` = sbalené). Soubor bez
@@ -167,6 +177,8 @@ tests/, tools/
 2. Karta `<Sekce>Card` (s `Toggle`, `Meta`, `State`, `Body`) a štítek `<Sekce>Chip` ve `Sluzbak.xaml`.
 3. Jméno do `$sections` ve `Sluzbak.ps1` i v `tests/e2e.ps1`; karta dole i do `$background`.
 4. Testy v `tests/unit.ps1`, kontrola v `tests/e2e.ps1`, řádek v `tests/live.ps1` a v tabulce v README.
+5. Totéž v mobilní verzi: `get<Sekce>` v `mobile/data.js`, karta a štítek v `mobile/index.html`, jméno
+   v `sections` a vykreslení v `renderers` v `mobile/app.js`, sekce v `tests/mobile.js`.
 
 ## Vydání
 

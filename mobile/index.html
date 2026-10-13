@@ -1,0 +1,218 @@
+<!doctype html>
+<!-- Mobilní Službák: stránka, která běží v aplikaci Bránocesta pro Android. Tady jsou jen obrazovky a jména prvků:
+     obsluha je v app.js, data čte data.js, vzhled je ve style.css. Každá karta přehledu má prvky <sekce>Card, <sekce>Toggle (záhlaví, které kartu sbaluje), <sekce>Meta, <sekce>State
+     a <sekce>Body a v nastavení štítek <sekce>Chip. Co je v kartě, do ní skládá app.js. -->
+<html lang="cs">
+<head>
+    <meta charset="utf-8">
+    <!-- interactive-widget: klávesnice na Androidu stránku zmenší, takže pole nezůstane pod ní. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+    <!-- Barvu si podle téhle značky berou i lišty telefonu. -->
+    <meta name="theme-color" content="#11141B">
+    <!-- Čísla linek a vzdálenosti nejsou telefonní čísla. -->
+    <meta name="format-detection" content="telephone=no">
+    <title>Službák</title>
+    <link rel="icon" href="icon-192.png">
+    <link rel="stylesheet" href="style.css">
+    <script defer src="data.js"></script>
+    <script defer src="app.js"></script>
+</head>
+<body>
+
+    <svg hidden>
+        <symbol id="iconRefresh" viewBox="0 0 24 24">
+            <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/>
+            <path d="M19.5 4.5v4.6h-4.6"/>
+        </symbol>
+        <symbol id="iconSettings" viewBox="0 0 24 24">
+            <path d="M4 7h8m4 0h4M4 12h2m4 0h10M4 17h10m4 0h2"/>
+            <circle cx="14" cy="7" r="2"/>
+            <circle cx="8" cy="12" r="2"/>
+            <circle cx="16" cy="17" r="2"/>
+        </symbol>
+    </svg>
+
+    <!-- Nastavení: klíč, místo a volby. První spuštění začíná tady. -->
+    <main id="setupView" class="setup" hidden>
+        <img class="logo" src="icon-192.png" alt="" width="56" height="56">
+        <h1>Službák</h1>
+        <p class="lead">Doprava, svoz odpadu, ovzduší a místa kolem tebe. Data z pražské platformy Golemio.</p>
+
+        <form id="setupForm" novalidate>
+            <div class="group">
+                <label for="tokenBox" class="label">Klíč ke Golemio API</label>
+                <!-- Obyčejné pole se zakrytým textem: u pole na heslo by prohlížeč nabízel uložení hesla. -->
+                <input id="tokenBox" class="secret" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done">
+                <p class="small">Klíč dostaneš zdarma po registraci na
+                    <a href="https://api.golemio.cz/api-keys" target="_blank" rel="noopener">api.golemio.cz/api-keys</a>.
+                    Uloží se jen v tomhle telefonu.</p>
+            </div>
+
+            <div class="group">
+                <label for="addressBox" class="label">Kde to má hlídat</label>
+                <div class="find">
+                    <input id="addressBox" maxlength="120" autocomplete="off" enterkeyhint="search">
+                    <button type="button" id="findButton" class="quiet">Najít</button>
+                </div>
+                <!-- Nalezené adresy doplní app.js; ťuknutí adresu vybere. -->
+                <div id="resultsList" class="results" hidden></div>
+                <p class="small">Hledaná adresa se pošle službě Nominatim (OpenStreetMap). Jestli nechceš, vyplň souřadnice ručně.</p>
+            </div>
+
+            <div class="columns">
+                <label>
+                    <span class="caption">Zeměpisná šířka</span>
+                    <input id="latitudeBox" maxlength="12" inputmode="decimal" autocomplete="off" enterkeyhint="done">
+                </label>
+                <label>
+                    <span class="caption">Zeměpisná délka</span>
+                    <input id="longitudeBox" maxlength="12" inputmode="decimal" autocomplete="off" enterkeyhint="done">
+                </label>
+            </div>
+
+            <fieldset>
+                <legend class="label">Co má přehled ukazovat</legend>
+                <div class="chips">
+                    <label class="chip"><input type="checkbox" id="transitChip"><span>Odjezdy</span></label>
+                    <label class="chip"><input type="checkbox" id="vehiclesChip"><span>Jede kolem</span></label>
+                    <label class="chip"><input type="checkbox" id="wasteChip"><span>Svoz odpadu</span></label>
+                    <label class="chip"><input type="checkbox" id="alertsChip"><span>Výluky</span></label>
+                    <label class="chip"><input type="checkbox" id="carsChip"><span>Sdílená auta</span></label>
+                    <label class="chip"><input type="checkbox" id="cyclingChip"><span>Cyklosčítač</span></label>
+                    <label class="chip"><input type="checkbox" id="airChip"><span>Ovzduší</span></label>
+                    <label class="chip"><input type="checkbox" id="microclimateChip"><span>Mikroklima</span></label>
+                    <label class="chip"><input type="checkbox" id="parkingChip"><span>Parkování</span></label>
+                    <label class="chip"><input type="checkbox" id="nearbyChip"><span>V okolí</span></label>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend class="label">Jak daleko hledat (v metrech)</legend>
+                <div class="columns three">
+                    <label>
+                        <span class="caption">Zastávky</span>
+                        <input id="stopsRangeBox" maxlength="4" inputmode="numeric" autocomplete="off" enterkeyhint="done">
+                    </label>
+                    <label>
+                        <span class="caption">Tříděný odpad</span>
+                        <input id="wasteRangeBox" maxlength="4" inputmode="numeric" autocomplete="off" enterkeyhint="done">
+                    </label>
+                    <label>
+                        <span class="caption">Parkoviště</span>
+                        <input id="parkingRangeBox" maxlength="4" inputmode="numeric" autocomplete="off" enterkeyhint="done">
+                    </label>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend class="label">Odjezdy</legend>
+                <div class="columns three">
+                    <label>
+                        <span class="caption">Kolik jich ukázat</span>
+                        <input id="departuresBox" maxlength="2" inputmode="numeric" autocomplete="off" enterkeyhint="done">
+                    </label>
+                    <label>
+                        <span class="caption">Obnovovat po (s)</span>
+                        <input id="refreshBox" maxlength="3" inputmode="numeric" autocomplete="off" enterkeyhint="done">
+                    </label>
+                </div>
+                <p id="limitsHint" class="small"></p>
+            </fieldset>
+
+            <button id="saveButton" class="primary">Uložit a ukázat přehled</button>
+            <p id="setupStatus" class="small status" role="status"></p>
+        </form>
+
+        <!-- Je-li se kam vrátit, nabízí se návrat; jinak ukázka, ať jde aplikace zkusit i bez klíče. Střídá je app.js. -->
+        <div class="buttons">
+            <button id="backButton" class="quiet back" hidden>Zpět na přehled</button>
+            <button id="demoButton" class="quiet" title="Ukáže přehled pro náměstí Míru s vymyšlenými daty. Nic se neuloží.">Zkusit s ukázkovými daty</button>
+            <button id="setupGatewayButton" class="quiet back" hidden>Bránocesta</button>
+        </div>
+    </main>
+
+    <!-- Přehled: jedna stránka se sbalovacími kartami pod sebou. -->
+    <main id="dashboardView" hidden>
+        <!-- Je vidět, jen když Službáka pustila Bránocesta; vrací do ní. -->
+        <button id="gatewayButton" class="quiet back" hidden>Bránocesta</button>
+
+        <header class="top">
+            <div class="place">
+                <span id="placeText"></span>
+                <span id="coordinatesText" class="small"></span>
+            </div>
+            <button id="refreshButton" class="quiet nav" aria-label="Obnovit" title="Odjezdy a vozidla se načtou hned, ostatní data nejvýš jednou za 10 minut">
+                <svg class="icon" aria-hidden="true"><use href="#iconRefresh"/></svg>
+            </button>
+            <button id="settingsButton" class="quiet nav" aria-label="Nastavení">
+                <svg class="icon" aria-hidden="true"><use href="#iconSettings"/></svg>
+            </button>
+        </header>
+        <div class="strip">
+            <span id="demoBadge" class="badge" hidden>ukázková data</span>
+            <span id="updatedText" class="small" role="status"></span>
+        </div>
+
+        <section id="transitCard" class="card">
+            <button id="transitToggle" class="head"><h2>Odjezdy</h2><span id="transitMeta" class="small"></span></button>
+            <p id="transitState" class="small state"></p>
+            <div id="transitBody" class="body" hidden></div>
+        </section>
+
+        <section id="vehiclesCard" class="card">
+            <button id="vehiclesToggle" class="head"><h2>Právě jede kolem</h2><span id="vehiclesMeta" class="small"></span></button>
+            <p id="vehiclesState" class="small state"></p>
+            <div id="vehiclesBody" class="body" hidden></div>
+        </section>
+
+        <section id="wasteCard" class="card">
+            <button id="wasteToggle" class="head"><h2>Svoz odpadu</h2><span id="wasteMeta" class="small"></span></button>
+            <p id="wasteState" class="small state"></p>
+            <div id="wasteBody" class="body" hidden></div>
+        </section>
+
+        <section id="alertsCard" class="card">
+            <button id="alertsToggle" class="head"><h2>Výluky a mimořádnosti</h2><span id="alertsMeta" class="small"></span></button>
+            <p id="alertsState" class="small state"></p>
+            <div id="alertsBody" class="body" hidden></div>
+        </section>
+
+        <section id="carsCard" class="card">
+            <button id="carsToggle" class="head"><h2>Sdílená auta</h2><span id="carsMeta" class="small"></span></button>
+            <p id="carsState" class="small state"></p>
+            <div id="carsBody" class="body" hidden></div>
+        </section>
+
+        <section id="cyclingCard" class="card">
+            <button id="cyclingToggle" class="head"><h2>Cyklosčítač</h2><span id="cyclingMeta" class="small"></span></button>
+            <p id="cyclingState" class="small state"></p>
+            <div id="cyclingBody" class="body" hidden></div>
+        </section>
+
+        <section id="airCard" class="card">
+            <button id="airToggle" class="head"><h2>Ovzduší</h2><span id="airMeta" class="small"></span></button>
+            <p id="airState" class="small state"></p>
+            <div id="airBody" class="body" hidden></div>
+        </section>
+
+        <section id="microclimateCard" class="card">
+            <button id="microclimateToggle" class="head"><h2>Mikroklima</h2><span id="microclimateMeta" class="small"></span></button>
+            <p id="microclimateState" class="small state"></p>
+            <div id="microclimateBody" class="body" hidden></div>
+        </section>
+
+        <section id="parkingCard" class="card">
+            <button id="parkingToggle" class="head"><h2>Parkování</h2><span id="parkingMeta" class="small"></span></button>
+            <p id="parkingState" class="small state"></p>
+            <div id="parkingBody" class="body" hidden></div>
+        </section>
+
+        <section id="nearbyCard" class="card">
+            <button id="nearbyToggle" class="head"><h2>V okolí</h2><span id="nearbyMeta" class="small"></span></button>
+            <p id="nearbyState" class="small state"></p>
+            <div id="nearbyBody" class="body" hidden></div>
+        </section>
+    </main>
+
+</body>
+</html>
