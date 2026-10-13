@@ -3,6 +3,25 @@
 Všechny podstatné změny v projektu. Formát vychází z [Keep a Changelog](https://keepachangelog.com/cs/1.1.0/),
 verze se řídí [sémantickým verzováním](https://semver.org/lang/cs/).
 
+## [0.8.0] - 2026-10-13
+
+### Přidáno
+
+- Podrobnosti o spoji v kartě Odjezdy: čas podle jízdního řádu, zpoždění (nebo že jede načas či napřed),
+  zastávka, ze které se vůz naposledy hlásil, bezbariérovost a klimatizace, u noční, příměstské a náhradní
+  linky i to, a u vlaku jeho číslo. Na počítači jsou v bublině po najetí myší, v telefonu se rozbalí ťuknutím
+  na řádek a obnovení karty je nezavře.
+- Karta Svoz odpadu dole připomíná, že směsný odpad Golemio neeviduje, jen tříděný.
+
+### Změněno
+
+- Kartu Mikroklima nahradila karta **Počasí**. Měření z městského senzoru ukazuje jako dřív; když senzory
+  mlčí (naživo od dubna 2026), ukáže místo prázdné karty teplotu vzduchu z teploměru u nejbližšího
+  cyklosčítače. Předpověď Golemio nemá. Kdo měl Mikroklima vypnuté nebo sbalené, uvidí Počasí zapnuté
+  a rozbalené.
+- V telefonu se dlouhé texty nahoře zalamují. Jméno místa i údaj v záhlaví karty (zastávky, stanice) dřív
+  končily třemi tečkami za okrajem displeje.
+
 ## [0.7.0] - 2026-10-13
 
 ### Přidáno
@@ -171,6 +190,7 @@ První vydání. Číslo začíná nulou, protože aplikace ještě neběžela s
 - Aplikace zatím neběžela proti skutečným datům z Golemia, jen proti ukázkovým odpovědím sestaveným podle
   specifikace API.
 
+[0.8.0]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.8.0
 [0.7.0]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.7.0
 [0.6.0]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.6.0
 [0.5.0]: https://github.com/JohnyLeeJohnes/sluzbak/releases/tag/v0.5.0

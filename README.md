@@ -5,11 +5,11 @@
 <h1 align="center">Službák</h1>
 
 <p align="center">
-  Praha kolem tebe v jednom okně: odjezdy a vozidla MHD, výluky, parkování, svoz odpadu a ovzduší.
+  Praha kolem tebe v jednom okně: odjezdy a vozidla MHD, výluky, parkování, svoz odpadu, ovzduší a počasí.
 </p>
 
 <p align="center">
-  <img src="docs/prehled.png" width="860" alt="Přehled: odjezdy, vozidla v okolí, svoz odpadu, výluky, sdílená auta, cyklosčítač, ovzduší, mikroklima, parkování a místa v okolí">
+  <img src="docs/prehled.png" width="860" alt="Přehled: odjezdy, vozidla v okolí, svoz odpadu, výluky, sdílená auta, cyklosčítač, ovzduší, počasí, parkování a místa v okolí">
 </p>
 
 Zadáš svůj klíč ke [Golemio API](https://api.golemio.cz/docs/openapi/) a adresu. Službák pak ukazuje, co se
@@ -29,7 +29,7 @@ i městská část, ve které leží.
 
 | Karta | Co v ní je | Odkud |
 | --- | --- | --- |
-| Odjezdy | nejbližší odjezdy ze zastávek do 600 m, zpoždění, zrušené spoje, mimořádnosti na zastávce | `/v2/gtfs/stops`, `/v2/pid/departureboards` |
+| Odjezdy | nejbližší odjezdy ze zastávek do 600 m, zpoždění, zrušené spoje, mimořádnosti na zastávce; po najetí myší podrobnosti o spoji | `/v2/gtfs/stops`, `/v2/pid/departureboards` |
 | Právě jede kolem | tramvaje, autobusy a metro do 1 km: linka, kam jede, směr jízdy, zpoždění | `/v2/public/vehiclepositions`, `/v2/public/gtfs/trips` |
 | Svoz odpadu | tři nejbližší stanoviště tříděného odpadu do 400 m, dny svozu, příští svoz, zaplnění podle senzoru | `/v2/sortedwastestations` |
 | | velkoobjemové kontejnery do 1,5 km, které teprve přijedou | `/v1/bulky-waste/stations` |
@@ -37,7 +37,7 @@ i městská část, ve které leží.
 | Sdílená auta | pět nejbližších volných aut do 1,5 km: provozovatel, palivo, dostupnost | `/v2/sharedcars` |
 | Cyklosčítač | kolik kol dnes projelo kolem nejbližšího sčítače, po směrech | `/v2/bicyclecounters` |
 | Ovzduší | index kvality a naměřené látky z nejbližší stanice ČHMÚ | `/v2/airqualitystations` |
-| Mikroklima | teplota, vlhkost, tlak, vítr a srážky z nejbližšího městského senzoru, který měří | `/v2/microclimate/points`, `/v2/microclimate/measurements` |
+| Počasí | teplota, vlhkost, tlak, vítr a srážky z nejbližšího městského senzoru, který měří; když senzory mlčí, teplota vzduchu z nejbližšího cyklosčítače s teploměrem | `/v2/microclimate/points`, `/v2/microclimate/measurements`, `/v2/bicyclecounters/temperatures` |
 | Parkování | šest nejbližších parkovišť do 1,5 km, volná místa, kde se měří, a nejbližší parkovací automat | `/v3/parking`, `/v3/parking-measurements`, `/v3/parking-machines` |
 | V okolí | nejbližší lékárna, nemocnice, knihovna, úřad, služebna městské policie, sběrný dvůr, hřiště a zahrada | `/v2/medicalinstitutions`, `/v2/municipallibraries`, `/v2/municipalauthorities`, `/v2/municipalpolicestations`, `/v2/wastecollectionyards`, `/v2/playgrounds`, `/v2/gardens` |
 
@@ -116,8 +116,8 @@ v přehledu.
   obsazenost a místa 10 minut, odjezdy a polohy vozidel 10 sekund, číselníky a zastávky kolem tebe po celou
   dobu běhu). Mačkání **Obnovit**, rozbalení karty ani uložení nastavení tak nic nestahují znovu. Paměť je
   jen v běžící aplikaci, na disk se nic neukládá.
-- **Karty dole naskočí o pár sekund později.** První načtení všech karet je kolem 34 dotazů, tedy víc, než
-  limit pustí naráz. Nejdřív se proto načtou odjezdy, vozidla, odpad, výluky, ovzduší a mikroklima a teprve
+- **Karty dole naskočí o pár sekund později.** První načtení všech karet je kolem 35 dotazů, tedy víc, než
+  limit pustí naráz. Nejdřív se proto načtou odjezdy, vozidla, odpad, výluky, ovzduší a počasí a teprve
   po nich parkování, místa v okolí, sdílená auta a cyklosčítač; na zbytek z nich se čeká, než se limit po
   osmi sekundách uvolní. Opakované načtení do deseti minut je žádný až tři dotazy.
 - **Kam vozidla jedou, se doplní nakonec.** Cíl každého vozidla je dotaz navíc, takže se na ně ptá, až když
@@ -125,15 +125,20 @@ v přehledu.
 - **Barvy u odpadu jsou barvy kontejnerů:** modrá papír, žlutá plasty a nápojové kartony, zelená barevné
   sklo, bílá čiré sklo, šedá kovy, červená elektro, fialová jedlé oleje (podle víka nádoby). Žlutému
   kontejneru říká Golemio „Multikomoditní sběr“; aplikace píše rovnou, co do něj patří. Směsný odpad (černé
-  popelnice) v datech o tříděném odpadu není.
+  popelnice) v datech o tříděném odpadu není a karta to dole připomíná.
+- **Podrobnosti o spoji.** Najeď myší na řádek odjezdu: čas podle jízdního řádu, zpoždění, zastávka, ze
+  které se vůz naposledy hlásil, a jestli je bezbariérový a klimatizovaný. U noční, příměstské a náhradní
+  linky a u vlaku to bublina napíše taky. Co Golemio o spoji neví, v ní chybí.
 - **Co běžný klíč nesmí.** K některým datům Golemio pouští jen na požádání (`golemio@operatorict.cz`). Klíč
   z registrace neprošel (zkoušeno 5. 10. 2026) k velkoobjemovým kontejnerům, sdíleným kolům, dopravním
   omezením, intenzitě dopravy, sčítačům chodců, hlášení závad ani k energetice. Velkoobjemové kontejnery
   aplikace umí a s klíčem, který na ně smí, je ukáže; bez něj tu část karty schová. Ostatní z toho v aplikaci
   nejsou, protože je nebylo na čem vyzkoušet.
-- **Ovzduší a mikroklima.** Měření ovzduší starší než 6 hodin se jako aktuální neukáže; karta napíše, z kdy
-  je poslední. Senzory mikroklimatu Golemiu od dubna 2026 žádná data neposílají, takže karta zatím jen
-  říká, že čerstvá data nejsou. Jakmile začnou chodit, ukáže je.
+- **Ovzduší a počasí.** Měření ovzduší starší než 6 hodin se jako aktuální neukáže; karta napíše, z kdy
+  je poslední. Předpověď ani srážky nad městem Golemio nemá. Karta Počasí proto bere městské senzory
+  mikroklimatu, a protože ty od dubna 2026 žádná data neposílají, ukazuje zatím jen teplotu vzduchu
+  z teploměru u nejbližšího cyklosčítače (do 10 km, ne starší než hodinu). Jakmile senzory začnou zase
+  hlásit, ukáže i vlhkost, tlak, vítr a srážky.
 - **Když Golemio chvíli neodpovídá.** Některé dotazy trvají napoprvé i desítky sekund. Dotaz se jednou
   zopakuje a karta, která se nespojila, to za půl minuty zkusí sama znovu.
 - **První hledání zastávek chvíli trvá.** API neumí vrátit zastávky podle polohy, takže se jednou po spuštění
@@ -157,6 +162,8 @@ přibalený spolu s Měšcem. Jak ji sestavit a dostat do telefonu, je v jejím 
   cloudu. Po odinstalování aplikace zadáš klíč znovu.
 - **Zastávky kolem tebe si pamatuje týden.** Jejich hledání znamená stáhnout celý seznam zastávek PID
   a telefon zavírá aplikace častěji než počítač. Ostatní odpovědi si pamatuje jen za běhu, jako na počítači.
+- **Podrobnosti o spoji se rozbalí ťuknutím** na řádek odjezdu; myš, která by ukázala bublinu, telefon nemá.
+- **Dlouhé texty nahoře se zalamují.** Jméno místa i zastávky v záhlaví karty jsou vidět celé.
 - **Odložená aplikace se neptá.** Obnovuje se, jen když je vidět; po návratu načte, co mezitím zestárlo.
 - **Bez klíče** jde zkusit tlačítkem **Zkusit s ukázkovými daty** na první obrazovce.
 
@@ -240,7 +247,7 @@ Změny se zapisují do [CHANGELOG.md](CHANGELOG.md).
 **In English:** Službák is a small Windows desktop dashboard on top of Prague's Golemio open-data API. Enter
 your own API key and an address, and it shows nearby public-transport departures and vehicles, service
 alerts, parking, shared cars, a bicycle counter, waste collection days, nearby amenities, air quality and
-microclimate sensors. It is a PowerShell script with a WPF window: download
+the current weather from city sensors. It is a PowerShell script with a WPF window: download
 [Sluzbak.zip](https://github.com/JohnyLeeJohnes/sluzbak/releases/latest/download/Sluzbak.zip) (always the
 latest version), unblock and extract it, and run `install.cmd` to get a shortcut. Nothing to compile or
 install. Nothing is stored except your settings. The interface is in Czech. The `mobile/` folder holds the
